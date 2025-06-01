@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GAME_CONSTANTS } from './constants';
-import { GameState, GameStatus, Player, RoundResult } from './types';
+import { GameState, GameStatus, Player, RoundResult, GameWinner, GameEndResult } from './types';
 
 @Injectable()
 export class GameStateService {
@@ -25,6 +25,8 @@ export class GameStateService {
   }> = [];
 
   private roundTimeout: NodeJS.Timeout | null = null;
+
+  private gameStartTime: Date | null = null;
 
   constructor() {
     this.resetGame();
@@ -66,6 +68,7 @@ export class GameStateService {
     this.state.isActive = true;
     this.state.currentRound = 1;
     this.gameStatus = GameStatus.STARTING;
+    this.gameStartTime = new Date();
     this.logger.log('Game started');
     return true;
   }
@@ -98,13 +101,15 @@ export class GameStateService {
       isActive: false,
       currentRound: 0,
       totalRounds: GAME_CONSTANTS.TOTAL_ROUNDS,
-      players: this.state.players,
+      players: [],
       countdown: null,
       roundStartTime: null,
       gameActive: false
     };
     this.gameStatus = GameStatus.WAITING;
-    this.logger.log('Game reset');
+    this.gameStartTime = null;
+    this.roundHistory = [];
+    this.logger.log('Game reset and ready for new players');
   }
 
   updatePlayers(players: Player[]): void {
@@ -222,5 +227,60 @@ export class GameStateService {
     stats.totalScore = this.state.players.find(p => p.id === playerId)?.score || 0;
 
     return stats;
+  }
+
+  determineWinners(): GameWinner[] {
+    const sortedPlayers = [...this.state.players]
+      .sort((a, b) => b.score - a.score);
+    
+    let currentPosition = 1;
+    let currentScore = sortedPlayers[0]?.score ?? 0;
+    
+    return sortedPlayers.map((player, index) => {
+      // If this player's score is less than the previous, increment position
+      if (player.score < currentScore) {
+        currentPosition = index + 1;
+        currentScore = player.score;
+      }
+      
+      return {
+        id: player.id,
+        username: player.username,
+        score: player.score,
+        position: currentPosition
+      };
+    });
+  }
+
+  getGameEndResult(): GameEndResult {
+    const winners = this.determineWinners();
+    const endTime = new Date();
+
+    return {
+      winners,
+      finalScores: winners,
+      gameStats: {
+        totalRounds: this.state.totalRounds,
+        duration: this.gameStartTime ? 
+          endTime.getTime() - this.gameStartTime.getTime() : 
+          0,
+        startTime: this.gameStartTime!,
+        endTime
+      }
+    };
+  }
+
+  prepareForNewGame(): void {
+    // Reset scores but keep players
+    this.state.players.forEach(player => {
+      player.score = 0;
+    });
+    
+    this.state.isActive = false;
+    this.state.currentRound = 0;
+    this.gameStatus = GameStatus.WAITING;
+    this.roundHistory = [];
+    
+    this.logger.log('Game prepared for new round with existing players');
   }
 }

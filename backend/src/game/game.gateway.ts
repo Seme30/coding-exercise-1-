@@ -193,19 +193,44 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
   }
 
-  private endGame(): void {
-    const finalState = this.gameStateService.getState();
-    const winners = this.determineGameWinners();
+  private async endGame(): Promise<void> {
+    try {
+      const gameEndResult = this.gameStateService.getGameEndResult();
+      
+      // Broadcast game over event
+      this.server.emit(GameEvents.GAME_OVER, gameEndResult);
+      
+      // Log game results
+      this.logger.log(`Game ended. Winners: ${
+        gameEndResult.winners
+          .filter(w => w.position === 1)
+          .map(w => w.username)
+          .join(', ')
+      }`);
+
+      // Wait for a brief moment before cleanup
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Ask players if they want to play again
+      this.handleGameCleanup();
+    } catch (error) {
+      this.logger.error('Error ending game:', error);
+    }
+  }
+
+  private handleGameCleanup(): void {
+    // Prepare for new game but keep existing players
+    this.gameStateService.prepareForNewGame();
     
-    this.server.emit(GameEvents.GAME_END, {
-      winners,
-      finalScores: finalState.players.map(p => ({
-        username: p.username,
-        score: p.score
-      }))
+    // Notify clients that a new game can be started
+    this.server.emit(GameEvents.NEW_GAME_READY, {
+      message: 'Ready for new game',
+      players: this.gameService.getAllPlayers(),
+      minPlayersToStart: GAME_CONSTANTS.MIN_PLAYERS_TO_START
     });
 
-    this.gameStateService.resetGame();
+    // Check if we can auto-start another game
+    this.checkAutoStart();
   }
 
   private determineGameWinners(): Player[] {
@@ -245,6 +270,18 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     if (player) {
       const stats = this.gameStateService.getPlayerStats(player.id);
       client.emit('player_stats', stats);
+    }
+  }
+
+  @SubscribeMessage('leave_game')
+  handleLeaveGame(client: Socket): void {
+    const player = this.gameService.removePlayer(client.id);
+    if (player) {
+      this.broadcastPlayerUpdate();
+      this.server.emit(GameEvents.PLAYER_LEFT, {
+        username: player.username,
+        timestamp: new Date()
+      });
     }
   }
 
