@@ -10,9 +10,11 @@ import {
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
-import { GameEvents, Player, RoundStartEvent, RoundEndEvent } from './types';
+import { GameEvents, Player, RoundStartEvent, RoundEndEvent } from './types/types';
 import { GameStateService } from './game-state.service';
 import { GAME_CONSTANTS } from './constants';
+import { GameMessageFactory } from './utils/message-factory';
+import * as WSMessages from './types/websocket-messages';
 
 @WebSocketGateway({
   cors: {
@@ -103,10 +105,11 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   private broadcastPlayerUpdate(): void {
     const players = this.gameService.getAllPlayers();
-    this.server.emit(GameEvents.PLAYER_UPDATE, {
+    const message = GameMessageFactory.createPlayerUpdate(
       players,
-      totalPlayers: players.length
-    });
+      players.length
+    );
+    this.server.emit(message.type, message);
   }
 
   @SubscribeMessage('heartbeat')
@@ -116,36 +119,23 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   @SubscribeMessage('start_game')
   handleStartGame(client: Socket): void {
-    const playerCount = this.gameService.getPlayerCount();
-    this.logger.debug(`Start game requested. Current players: ${playerCount}`);
-
-    if (this.gameStateService.isGameInProgress()) {
-      client.emit(GameEvents.ERROR, {
-        message: 'Game is already in progress',
-        code: 'GAME_IN_PROGRESS'
-      });
-      return;
-    }
-
     if (!this.gameStateService.canStartGame()) {
-      client.emit(GameEvents.ERROR, {
-        message: `Need ${GAME_CONSTANTS.MIN_PLAYERS_TO_START} players to start the game. Current players: ${playerCount}`,
-        code: 'CANNOT_START_GAME'
-      });
+      const errorMessage = GameMessageFactory.createError(
+        'CANNOT_START_GAME',
+        `Need ${GAME_CONSTANTS.MIN_PLAYERS_TO_START} players to start the game`,
+      );
+      client.emit(errorMessage.type, errorMessage);
       return;
     }
 
     if (this.gameStateService.startGame()) {
-      const gameStartData = {
+      const gameStartMessage = GameMessageFactory.createGameStart({
         totalRounds: GAME_CONSTANTS.TOTAL_ROUNDS,
         players: this.gameService.getAllPlayers(),
-        currentRound: 0
-      };
-
-      this.server.emit(GameEvents.GAME_START, gameStartData);
-      this.logger.debug('Game started, initiating first round');
+        isAutoStarted: false
+      });
       
-      // Start the round flow
+      this.server.emit(gameStartMessage.type, gameStartMessage);
       setTimeout(() => this.handleRoundFlow(), GAME_CONSTANTS.COUNTDOWN_DURATION);
     }
   }

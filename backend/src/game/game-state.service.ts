@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GAME_CONSTANTS } from './constants';
-import { GameState, GameStatus, Player, RoundResult, GameWinner, GameEndResult } from './types';
+import { GameState, GameStatus, Player, RoundResult, GameWinner, GameEndResult } from './types/types';
 
 @Injectable()
 export class GameStateService {
