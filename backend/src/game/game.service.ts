@@ -20,7 +20,7 @@ export class GameService {
     };
 
     this.players.set(socketId, player);
-    this.logger.log(`Player created: ${username} (${socketId})`);
+    this.logger.debug(`Player created: ${username} (${socketId}). Total players: ${this.players.size}`);
     return player;
   }
 
@@ -28,10 +28,9 @@ export class GameService {
     const player = this.players.get(socketId);
     if (player) {
       this.players.delete(socketId);
-      this.logger.log(`Player removed: ${player.username} (${socketId})`);
-      return player;
+      this.logger.debug(`Player removed: ${player.username} (${socketId}). Remaining players: ${this.players.size}`);
     }
-    return null;
+    return player || null;
   }
 
   getPlayer(socketId: string): Player | undefined {
@@ -44,11 +43,14 @@ export class GameService {
     );
   }
 
-  getAllPlayers(): PlayerUpdate {
-    return {
-      players: Array.from(this.players.values()),
-      totalPlayers: this.players.size
-    };
+  getAllPlayers(): Player[] {
+    return Array.from(this.players.values());
+  }
+
+  getPlayerCount(): number {
+    const count = this.players.size;
+    this.logger.debug(`Current player count: ${count}`);
+    return count;
   }
 
   updatePlayerScore(socketId: string, newScore: number): Player | null {
@@ -63,5 +65,10 @@ export class GameService {
 
   hasEnoughPlayers(minPlayers: number = 2): boolean {
     return this.players.size >= minPlayers;
+  }
+
+  clearAllPlayers(): void {
+    this.players.clear();
+    this.logger.debug('All players cleared');
   }
 }

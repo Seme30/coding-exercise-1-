@@ -7,13 +7,13 @@ export class GameStateService {
   private readonly logger = new Logger(GameStateService.name);
   
   private state: GameState = {
-      isActive: false,
-      currentRound: 0,
-      totalRounds: GAME_CONSTANTS.TOTAL_ROUNDS,
-      players: [],
-      countdown: null,
-      roundStartTime: null,
-      gameActive: false
+    isActive: false,
+    currentRound: 0,
+    totalRounds: GAME_CONSTANTS.TOTAL_ROUNDS,
+    players: [],
+    countdown: null,
+    roundStartTime: null,
+    gameActive: false
   };
 
   private gameStatus: GameStatus = GameStatus.WAITING;
@@ -31,11 +31,23 @@ export class GameStateService {
   }
 
   canStartGame(): boolean {
-    return (
+    const playerCount = this.state.players.length;
+    const canStart = (
       !this.state.isActive &&
-      this.state.players.length >= GAME_CONSTANTS.MIN_PLAYERS_TO_START &&
-      this.state.players.length <= GAME_CONSTANTS.MAX_PLAYERS
+      playerCount >= GAME_CONSTANTS.MIN_PLAYERS_TO_START &&
+      playerCount <= GAME_CONSTANTS.MAX_PLAYERS
     );
+
+    this.logger.debug(
+      `Can start game check - Active: ${this.state.isActive}, ` +
+      `Players: ${playerCount}, Can start: ${canStart}`
+    );
+
+    return canStart;
+  }
+
+  isGameInProgress(): boolean {
+    return this.state.isActive;
   }
 
   startGame(): boolean {
@@ -88,12 +100,8 @@ export class GameStateService {
   }
 
   updatePlayers(players: Player[]): void {
-    this.state.players = players;
-    
-    // Check if we can start the game
-    if (this.canStartGame() && this.gameStatus === GameStatus.WAITING) {
-      this.logger.log('Minimum players reached, game can start');
-    }
+    this.state.players = [...players];
+    this.logger.debug(`Players updated. Count: ${this.state.players.length}`);
   }
 
   getWinner(): Player | Player[] | null {
