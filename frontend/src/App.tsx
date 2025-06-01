@@ -1,11 +1,15 @@
 import { Game } from './components/Game';
+import { GameProvider } from './context/GameContext';
+import './App.css';
 
 function App() {
   return (
-    <div className="App">
-      <h1>Multi-Round Points Game</h1>
-      <Game />
-    </div>
+    <GameProvider>
+      <div className="App">
+        <h1>Multi-Round Points Game</h1>
+        <Game />
+      </div>
+    </GameProvider>
   );
 }
 

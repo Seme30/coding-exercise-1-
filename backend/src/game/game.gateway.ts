@@ -20,11 +20,17 @@ import * as WSMessages from './types/websocket-messages';
   cors: {
     origin: '*',
   },
-  namespace: 'game'
+  namespace: 'game',
+  pingInterval: 10000, // 10 seconds
+  pingTimeout: 5000,   // 5 seconds
+  transports: ['websocket'],
+  allowUpgrades: true
 })
 export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(GameGateway.name);
   private autoStartTimeout: NodeJS.Timeout | null = null;
+  private readonly disconnectTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private readonly heartbeatIntervals: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(
     private readonly gameService: GameService,
@@ -40,32 +46,65 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
+    
+    // Clear any existing timeouts
+    const existingTimeout = this.disconnectTimeouts.get(client.id);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      this.disconnectTimeouts.delete(client.id);
+    }
+
+    // Start heartbeat interval
+    const heartbeatInterval = setInterval(() => {
+      client.emit('heartbeat');
+    }, 10000); // 10 seconds
+    
+    this.heartbeatIntervals.set(client.id, heartbeatInterval);
   }
 
   handleDisconnect(client: Socket) {
-    const player = this.gameService.removePlayer(client.id);
-    if (player) {
-      const allPlayers = this.gameService.getAllPlayers();
-      this.gameStateService.updatePlayers(allPlayers);
-      this.broadcastPlayerUpdate();
-      
-      // If game hasn't started, check if we need to cancel auto-start
-      if (!this.gameStateService.isGameInProgress() && this.autoStartTimeout) {
-        if (this.gameService.getPlayerCount() < GAME_CONSTANTS.MIN_PLAYERS_TO_START) {
-          clearTimeout(this.autoStartTimeout);
-          this.autoStartTimeout = null;
-          
-          this.server.emit(GameEvents.GAME_AUTO_START_CANCELLED, {
-            message: 'Auto-start cancelled: Not enough players',
-            currentPlayers: this.gameService.getPlayerCount()
-          });
-        }
-      }
-      
-      this.logger.debug(
-        `Player ${player.username} disconnected. Remaining players: ${this.gameService.getPlayerCount()}`
-      );
+    // Clear heartbeat interval
+    const heartbeatInterval = this.heartbeatIntervals.get(client.id);
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      this.heartbeatIntervals.delete(client.id);
     }
+    
+    // Clear any existing timeout for this client
+    const existingTimeout = this.disconnectTimeouts.get(client.id);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Set a new timeout to remove the player after a grace period
+    const timeout = setTimeout(() => {
+      const player = this.gameService.removePlayer(client.id);
+      if (player) {
+        const allPlayers = this.gameService.getAllPlayers();
+        this.gameStateService.updatePlayers(allPlayers);
+        this.broadcastPlayerUpdate();
+        
+        // If game hasn't started, check if we need to cancel auto-start
+        if (!this.gameStateService.isGameInProgress() && this.autoStartTimeout) {
+          if (this.gameService.getPlayerCount() < GAME_CONSTANTS.MIN_PLAYERS_TO_START) {
+            clearTimeout(this.autoStartTimeout);
+            this.autoStartTimeout = null;
+            
+            this.server.emit(GameEvents.GAME_AUTO_START_CANCELLED, {
+              message: 'Auto-start cancelled: Not enough players',
+              currentPlayers: this.gameService.getPlayerCount()
+            });
+          }
+        }
+        
+        this.logger.debug(
+          `Player ${player.username} disconnected. Remaining players: ${this.gameService.getPlayerCount()}`
+        );
+      }
+      this.disconnectTimeouts.delete(client.id);
+    }, 5000); // 5 second grace period
+
+    this.disconnectTimeouts.set(client.id, timeout);
   }
 
   @SubscribeMessage('join_game')
@@ -115,6 +154,13 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   @SubscribeMessage('heartbeat')
   handleHeartbeat(client: Socket): void {
     client.emit('heartbeat_ack', { timestamp: new Date() });
+    
+    // If there's a pending disconnect timeout, clear it
+    const existingTimeout = this.disconnectTimeouts.get(client.id);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      this.disconnectTimeouts.delete(client.id);
+    }
   }
 
   @SubscribeMessage('start_game')

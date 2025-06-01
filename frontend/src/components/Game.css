@@ -1,0 +1,188 @@
+.game-container {
+  margin: 20px;
+  font-family: Arial, sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.connection-status {
+  font-size: 1.2em;
+  text-align: center;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.join-form {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.join-form input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+.game-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.error-message {
+  color: #d32f2f;
+  background-color: #ffebee;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.game-state {
+  margin-top: 20px;
+}
+
+.round-info {
+  text-align: center;
+  padding: 15px;
+  margin: 15px 0;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.round-number {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.round-progress {
+  height: 10px;
+  background: #e9ecef;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #007bff;
+  transition: width 0.5s ease;
+}
+
+.players-list {
+  margin-top: 20px;
+}
+
+.players-list h3 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.players-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.player-card {
+  padding: 15px;
+  margin: 5px 0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.player-card.winner {
+  background-color: #ffd700;
+  border: 2px solid #daa520;
+}
+
+.player-card.spinning {
+  animation: pulse 2s infinite;
+}
+
+.player-name {
+  font-weight: bold;
+}
+
+.player-score {
+  background: #f8f9fa;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.winner {
+  background-color: #f0fdf4;
+  border-color: #22c55e;
+  animation: winner-glow 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 10px rgba(0,123,255,0.3);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+@keyframes winner-glow {
+  0% {
+    box-shadow: 0 0 5px rgba(34,197,94,0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(34,197,94,0.4);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(34,197,94,0.2);
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+.current-player {
+  background-color: #e3f2fd;
+  border: 2px solid #2196f3;
+} 
