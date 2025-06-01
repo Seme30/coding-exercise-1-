@@ -11,3 +11,22 @@ multi-round-points-game/
 ├── README.md
 └── .gitignore
 ```
+
+## Setup Instructions
+
+### Backend Setup
+```bash
+cd backend
+npm install
+npm run start:dev
+```
+
+### Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
+## Development
+- Backend runs on: http://localhost:3000
+- Frontend runs on: http://localhost:5173
