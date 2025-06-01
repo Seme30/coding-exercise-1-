@@ -31,7 +31,9 @@ export enum GameEvents {
     ROUND_START = 'round_start',
     ROUND_END = 'round_end',
     GAME_END = 'game_end',
-    ERROR = 'error'
+    ERROR = 'error',
+    GAME_AUTO_START_PENDING = 'game_auto_start_pending',
+    GAME_AUTO_START_CANCELLED = 'game_auto_start_cancelled'
 }
 
 export interface Player {
@@ -55,6 +57,25 @@ export enum GameStatus {
   STARTING = 'starting',
   ACTIVE = 'active',
   ROUND_END = 'round_end',
-  FINISHED = 'finished'
+  FINISHED = 'finished',
+  ROUND_IN_PROGRESS = 'round_in_progress',
+  PAUSED = "paused"
+}
+
+export interface RoundResult {
+  winner: Player;
+  roundNumber: number;
+  isLastRound: boolean;
+  scores: Array<{ id: string; username: string; score: number; }>;
+}
+
+export interface RoundStartEvent {
+  roundNumber: number;
+  totalRounds: number;
+  spinDuration: number;
+}
+
+export interface RoundEndEvent extends RoundResult {
+  nextRoundStartsIn?: number;
 }
 
