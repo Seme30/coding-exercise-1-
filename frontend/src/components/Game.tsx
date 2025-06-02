@@ -17,6 +17,7 @@ export const Game: React.FC = () => {
   const { joinGame, startGame, leaveGame } = useGameActions();
   const [showWinnerDisplay, setShowWinnerDisplay] = useState(false);
   const [isPlayerListCollapsed, setIsPlayerListCollapsed] = useState(false);
+  const [roundTimings, setRoundTimings] = useState<{ serverTimestamp: number; expectedEndTime: number; } | undefined>();
 
   useEffect(() => {
     const currentPlayer = players.find(p => p.id === currentPlayerId);
@@ -27,6 +28,26 @@ export const Game: React.FC = () => {
       setShowWinnerDisplay(true);
     }
   }, [gameWinner, gameActive, currentPlayerId, hasJoined, players, currentUsername]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('round_start', (data) => {
+        setRoundTimings({
+          serverTimestamp: data.serverTimestamp,
+          expectedEndTime: data.expectedEndTime
+        });
+      });
+
+      socket.on('round_end', () => {
+        setRoundTimings(undefined);
+      });
+
+      return () => {
+        socket.off('round_start');
+        socket.off('round_end');
+      };
+    }
+  }, [socket]);
 
   const handleJoinSuccess = async (username: string) => {
     try {
@@ -67,6 +88,7 @@ export const Game: React.FC = () => {
               currentRound={currentRound} 
               totalRounds={totalRounds}
               statusMessage={statusMessage}
+              roundTimings={roundTimings}
             />
           ) : hasJoined && currentPlayer ? (
             <div className="current-player-info">

@@ -192,11 +192,17 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       this.gameStateService.startNewRound();
       const roundNumber = this.gameStateService.getState().currentRound;
       
+      // Get current server timestamp
+      const serverTimestamp = Date.now();
+      const expectedEndTime = serverTimestamp + GAME_CONSTANTS.ROUND_DURATION;
+      
       // Broadcast round start
       const roundStartEvent: RoundStartEvent = {
         roundNumber,
         totalRounds: GAME_CONSTANTS.TOTAL_ROUNDS,
-        spinDuration: GAME_CONSTANTS.ROUND_DURATION
+        spinDuration: GAME_CONSTANTS.ROUND_DURATION,
+        serverTimestamp,
+        expectedEndTime
       };
       this.server.emit(GameEvents.ROUND_START, roundStartEvent);
       

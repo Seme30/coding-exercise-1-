@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { FaClock } from 'react-icons/fa';
 import { useGameState, usePlayers } from '../../context/GameContext';
+import { CountdownTimer } from './CountdownTimer';
 import './GameInfo.css';
 
 interface GameInfoProps {
   currentRound: number;
   totalRounds: number;
   statusMessage: string;
+  roundTimings?: {
+    serverTimestamp: number;
+    expectedEndTime: number;
+  };
 }
 
 const debugLog = (action: string, data?: any) => {
@@ -16,9 +21,9 @@ const debugLog = (action: string, data?: any) => {
 export const GameInfo: React.FC<GameInfoProps> = ({ 
   currentRound, 
   totalRounds, 
-  statusMessage
+  statusMessage,
+  roundTimings
 }) => {
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [autoStartCountdown, setAutoStartCountdown] = useState<number | null>(null);
   const { currentUsername } = useGameState();
   const { currentPlayerId } = usePlayers();
@@ -28,22 +33,19 @@ export const GameInfo: React.FC<GameInfoProps> = ({
   }, [currentPlayerId, currentUsername]);
 
   useEffect(() => {
-    // Extract countdown from status message
-    if (statusMessage.toLowerCase().includes('starting in')) {
-      const countdownMatch = statusMessage.match(/\d+/);
-      if (countdownMatch) {
-        setCountdown(parseInt(countdownMatch[0]));
-      }
-    } else if (statusMessage.toLowerCase().includes('auto-starting in')) {
+    if (statusMessage.toLowerCase().includes('auto-starting in')) {
       const countdownMatch = statusMessage.match(/\d+/);
       if (countdownMatch) {
         setAutoStartCountdown(parseInt(countdownMatch[0]));
       }
     } else {
-      setCountdown(null);
       setAutoStartCountdown(null);
     }
   }, [statusMessage]);
+
+  const handleCountdownComplete = () => {
+    // Optional: Add any completion logic here
+  };
 
   return (
     <div className="game-info">
@@ -61,14 +63,17 @@ export const GameInfo: React.FC<GameInfoProps> = ({
       <div className="status-message">
         {statusMessage}
       </div>
-      {(countdown !== null || autoStartCountdown !== null) && (
+      {roundTimings && (
+        <CountdownTimer
+          serverTimestamp={roundTimings.serverTimestamp}
+          expectedEndTime={roundTimings.expectedEndTime}
+          onComplete={handleCountdownComplete}
+        />
+      )}
+      {autoStartCountdown !== null && (
         <div className="countdown">
           <FaClock className="countdown-icon" />
-          {countdown !== null ? (
-            <span>Starting in: {countdown}s</span>
-          ) : (
-            <span>Auto-starting in: {autoStartCountdown}s</span>
-          )}
+          <span>Auto-starting in: {autoStartCountdown}s</span>
         </div>
       )}
     </div>

@@ -75,6 +75,8 @@ export interface RoundStartEvent {
   roundNumber: number;
   totalRounds: number;
   spinDuration: number;
+  serverTimestamp: number;  // Server's timestamp when the round started
+  expectedEndTime: number;  // Server's expected timestamp when the round should end
 }
 
 export interface RoundEndEvent extends RoundResult {
