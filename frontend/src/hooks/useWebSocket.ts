@@ -46,6 +46,8 @@ export const useWebSocket = () => {
   const socketRef = useRef<Socket | null>(null);
   const [isSocketReady, setIsSocketReady] = useState(false);
   const mountedRef = useRef(false);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasJoinedRef = useRef(false);
 
   const setupSocketListeners = useCallback(() => {
     if (!socketRef.current) return;
@@ -56,6 +58,11 @@ export const useWebSocket = () => {
         setIsSocketReady(true);
         dispatch({ type: 'SET_CONNECTION', payload: true });
         dispatch({ type: 'SET_STATUS_MESSAGE', payload: 'Connected' });
+        
+        // If we were previously joined, try to rejoin
+        if (hasJoinedRef.current && state.currentPlayer?.username) {
+          socketRef.current?.emit('join_game', state.currentPlayer.username);
+        }
       }
     });
 
@@ -64,20 +71,27 @@ export const useWebSocket = () => {
       if (mountedRef.current) {
         setIsSocketReady(false);
         dispatch({ type: 'SET_CONNECTION', payload: false });
-        dispatch({ type: 'SET_STATUS_MESSAGE', payload: 'Disconnected' });
-        dispatch({ type: 'UPDATE_PLAYERS', payload: [] });
+        dispatch({ type: 'SET_STATUS_MESSAGE', payload: 'Disconnected - Reconnecting...' });
       }
     });
 
-    socketRef.current.on('join_game_success', (player: Player) => {
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      if (mountedRef.current) {
+        dispatch({ type: 'SET_ERROR', payload: 'Connection error - retrying...' });
+      }
+    });
+
+    socketRef.current.on('join_game_success', (player) => {
       console.log('Join game success:', player);
       if (mountedRef.current) {
+        hasJoinedRef.current = true;
         dispatch({ type: 'SET_PLAYER', payload: player });
         dispatch({ type: 'SET_STATUS_MESSAGE', payload: `Joined as ${player.username}` });
       }
     });
 
-    socketRef.current.on('player_update', (update: PlayerUpdateEvent) => {
+    socketRef.current.on('player_update', (update) => {
       console.log('Player update received:', update);
       if (mountedRef.current && update.data && Array.isArray(update.data.players)) {
         dispatch({ type: 'UPDATE_PLAYERS', payload: update.data.players });
@@ -90,12 +104,6 @@ export const useWebSocket = () => {
       if (mountedRef.current && error.data) {
         const errorMessage = error.data.message || 'An unknown error occurred';
         dispatch({ type: 'SET_ERROR', payload: errorMessage });
-        // Log the full error for debugging
-        console.error('Game error details:', {
-          code: error.data.code,
-          message: error.data.message,
-          timestamp: error.timestamp
-        });
       }
     });
 
@@ -134,7 +142,6 @@ export const useWebSocket = () => {
     socketRef.current.on('round_end', (data: RoundEndEvent) => {
       console.log('Round ended:', data);
       if (mountedRef.current) {
-        // Update players with new scores
         dispatch({ type: 'UPDATE_PLAYERS', payload: data.scores });
         
         const winnerMessage = data.winner.id === state.currentPlayer?.id
@@ -173,7 +180,6 @@ export const useWebSocket = () => {
           payload: `Game Over! Winners: ${winners}` 
         });
         
-        // Update final scores
         dispatch({ type: 'UPDATE_PLAYERS', payload: data.finalScores });
       }
     });
@@ -190,10 +196,15 @@ export const useWebSocket = () => {
       console.log('Attempting to connect to WebSocket server...');
       socketRef.current = io('http://localhost:3000/game', {
         transports: ['websocket'],
-        timeout: 10000
+        timeout: 10000,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        autoConnect: false
       });
 
       setupSocketListeners();
+      socketRef.current.connect();
     } catch (error) {
       console.error('Connection attempt failed:', error);
       if (mountedRef.current) {
@@ -204,6 +215,11 @@ export const useWebSocket = () => {
 
   const disconnect = useCallback(() => {
     console.log('Disconnecting...');
+    hasJoinedRef.current = false;
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
     if (socketRef.current) {
       socketRef.current.removeAllListeners();
       socketRef.current.disconnect();
@@ -213,21 +229,9 @@ export const useWebSocket = () => {
         dispatch({ type: 'SET_CONNECTION', payload: false });
         dispatch({ type: 'SET_STATUS_MESSAGE', payload: 'Disconnected' });
         dispatch({ type: 'UPDATE_PLAYERS', payload: [] });
-        dispatch({ type: 'SET_PLAYER', payload: { id: '', username: '', score: 0, joinedAt: '' } as Player });
+        dispatch({ type: 'SET_PLAYER', payload: null });
       }
     }
-  }, [dispatch]);
-
-  const joinGame = useCallback((username: string) => {
-    console.log('Attempting to join game with username:', username);
-    if (!socketRef.current?.connected) {
-      console.error('Cannot join: Socket not connected');
-      dispatch({ type: 'SET_ERROR', payload: 'Socket not connected. Please try again.' });
-      return;
-    }
-    // Clear any previous errors before attempting to join
-    dispatch({ type: 'SET_ERROR', payload: null });
-    socketRef.current.emit('join_game', username);
   }, [dispatch]);
 
   useEffect(() => {
@@ -236,23 +240,33 @@ export const useWebSocket = () => {
 
     return () => {
       mountedRef.current = false;
-      if (socketRef.current) {
-        console.log('Cleaning up socket connection');
-        socketRef.current.removeAllListeners();
-        socketRef.current.disconnect();
-        socketRef.current = null;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
       }
+      disconnect();
     };
-  }, [connect]);
+  }, [connect, disconnect]);
 
   return {
     connect,
     disconnect,
-    joinGame,
-    startGame: () => socketRef.current?.emit('start_game'),
-    leaveGame: () => socketRef.current?.emit('leave_game'),
+    joinGame: useCallback((username: string) => {
+      console.log('Attempting to join game with username:', username);
+      if (!socketRef.current?.connected) {
+        console.error('Cannot join: Socket not connected');
+        dispatch({ type: 'SET_ERROR', payload: 'Socket not connected. Please try again.' });
+        return;
+      }
+      dispatch({ type: 'SET_ERROR', payload: null });
+      socketRef.current.emit('join_game', username);
+    }, [dispatch]),
+    startGame: useCallback(() => socketRef.current?.emit('start_game'), []),
+    leaveGame: useCallback(() => {
+      hasJoinedRef.current = false;
+      socketRef.current?.emit('leave_game');
+    }, []),
     isConnected: state.isConnected,
-    players: state.players || [], // Ensure we always return an array
+    players: state.players || [],
     gameActive: state.gameActive,
     currentRound: state.currentRound,
     totalRounds: state.totalRounds,

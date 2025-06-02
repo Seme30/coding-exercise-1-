@@ -1,0 +1,123 @@
+.spinning-element-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.3s ease-in-out;
+}
+
+.spinning-element {
+  position: relative;
+  --spinner-color: #4CAF50;
+  transition: all 0.3s ease-in-out;
+}
+
+.size-small .spinning-element {
+  width: 40px;
+  height: 40px;
+}
+
+.size-medium .spinning-element {
+  width: 60px;
+  height: 60px;
+}
+
+.size-large .spinning-element {
+  width: 80px;
+  height: 80px;
+}
+
+.inner-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40%;
+  height: 40%;
+  background: var(--spinner-color);
+  border-radius: 50%;
+  opacity: 0.7;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.outer-circle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 3px solid var(--spinner-color);
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.spinner-particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  animation: none;
+}
+
+.is-spinning .spinner-particles {
+  animation: rotate 2s linear infinite;
+}
+
+.particle {
+  position: absolute;
+  width: 15%;
+  height: 15%;
+  background: var(--spinner-color);
+  border-radius: 50%;
+  transform-origin: 50% 50%;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.particle-1 { top: 0; left: 50%; transform: translateX(-50%); }
+.particle-2 { top: 14.64%; right: 14.64%; }
+.particle-3 { top: 50%; right: 0; transform: translateY(-50%); }
+.particle-4 { bottom: 14.64%; right: 14.64%; }
+.particle-5 { bottom: 0; left: 50%; transform: translateX(-50%); }
+.particle-6 { bottom: 14.64%; left: 14.64%; }
+.particle-7 { top: 50%; left: 0; transform: translateY(-50%); }
+.particle-8 { top: 14.64%; left: 14.64%; }
+
+.is-spinning .spinning-element {
+  transform: scale(1.1);
+}
+
+.is-spinning .inner-circle {
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+.is-spinning .outer-circle {
+  animation: glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.5;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 5px var(--spinner-color);
+    opacity: 0.3;
+  }
+  to {
+    box-shadow: 0 0 15px var(--spinner-color);
+    opacity: 0.6;
+  }
+} 
