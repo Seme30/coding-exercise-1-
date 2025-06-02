@@ -1,9 +1,12 @@
 .game-info {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  margin: 20px 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 15px;
+  text-align: center;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 15px;
 }
 
 .info-grid {
@@ -26,9 +29,14 @@
 }
 
 .status-message {
-  font-size: 1.1em;
-  color: #2196f3;
-  margin-bottom: 10px;
+  font-size: 1rem;
+  color: white;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 0.5rem 0;
 }
 
 .error-message {
@@ -54,9 +62,16 @@
 }
 
 .round-info {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .round-header {
@@ -68,12 +83,26 @@
 
 .round-label {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 200px;
 }
 
 .round-numbers {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .round-separator {
@@ -93,4 +122,78 @@
   background: linear-gradient(90deg, #4f46e5, #6366f1);
   transition: width 0.5s ease;
   border-radius: 4px;
+}
+
+.current-player {
+  font-size: 1rem;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 200px;
+}
+
+.player-username {
+  font-weight: 700;
+  color: #4CAF50;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.countdown {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #FFC107;
+  margin-top: 0.75rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(255, 193, 7, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.countdown-icon {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .game-info {
+    padding: 10px;
+  }
+
+  .round-info {
+    padding: 0.75rem;
+  }
+
+  .round-numbers {
+    font-size: 1.1rem;
+  }
+
+  .current-player {
+    font-size: 0.9rem;
+  }
+
+  .status-message {
+    font-size: 0.9rem;
+  }
 } 

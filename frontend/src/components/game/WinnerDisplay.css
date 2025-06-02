@@ -1,140 +1,188 @@
 .winner-display {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: rgba(0, 0, 0, 0.85);
-  z-index: 1000;
-  animation: fadeIn 0.5s ease-out;
-}
-
-.winner-content {
-  background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
-  padding: 2rem;
   border-radius: 20px;
+  padding: 30px;
   text-align: center;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  animation: slideUp 0.5s ease-out;
+  color: white;
+  box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+  z-index: 1000;
+  animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  min-width: 300px;
 }
 
-.game-over {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
-  background: linear-gradient(45deg, #4CAF50, #8BC34A);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: pulse 2s infinite;
+.winner-display.game-winner.is-winner {
+  background: rgba(0, 0, 0, 0.9);
+  box-shadow: 0 0 100px rgba(255, 215, 0, 0.5);
+  border: 2px solid rgba(255, 215, 0, 0.5);
+}
+
+.winner-display.round-winner.is-winner {
+  background: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
+  border: 2px solid rgba(76, 175, 80, 0.3);
+}
+
+.winner-display.is-loser {
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 30px rgba(158, 158, 158, 0.3);
+  border: 2px solid rgba(158, 158, 158, 0.3);
+}
+
+.winner-content, .loser-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
 }
 
 .winner-trophy {
-  font-size: 5rem;
-  margin: 1rem 0;
-  animation: bounce 1s infinite;
+  font-size: 4em;
+  margin-bottom: 10px;
+  animation: bounce 1s ease infinite;
 }
 
-.winner-text {
-  font-size: 2rem;
+.trophy-icon {
+  color: #FFD700;
+  font-size: 4em;
+  animation: bounce 1s ease infinite;
+}
+
+.medal-icon {
   color: #4CAF50;
-  margin: 1rem 0;
-  animation: glow 2s infinite;
+  font-size: 4em;
+  animation: bounce 1s ease infinite;
 }
 
-.winner-message {
-  font-size: 1.5rem;
-  color: #ffffff;
-  margin: 1rem 0;
+.winner-display.is-winner h2 {
+  font-size: 2em;
+  margin: 0;
+  background: linear-gradient(45deg, #FFD700, #FFA500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.winner-celebration {
-  margin: 2rem 0;
+.winner-display.is-loser h2 {
+  font-size: 2em;
+  margin: 0;
+  color: #9E9E9E;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.celebration-emoji {
-  font-size: 3rem;
-  margin: 0 0.5rem;
-  display: inline-block;
-  animation: float 3s infinite;
+.winner-name {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 10px 0;
 }
 
-.celebration-emoji:nth-child(2) {
-  animation-delay: 0.5s;
+.winner-message, .loser-message {
+  font-size: 1.2em;
+  margin: 10px 0;
+  color: #E0E0E0;
 }
 
-.celebration-emoji:nth-child(3) {
-  animation-delay: 1s;
+.winner-score {
+  font-size: 1.2em;
+  color: #FFD700;
 }
 
-.loser-emoji {
-  font-size: 4rem;
-  margin: 1rem 0;
-  animation: shake 0.5s ease-in-out;
+.loser-content .winner-score {
+  color: #9E9E9E;
 }
 
-.loser-text {
-  font-size: 2rem;
-  color: #ff9800;
-  margin: 1rem 0;
+.celebration-emojis {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
 }
 
-.winner-announcement {
-  font-size: 1.5rem;
-  color: #ffffff;
-  margin: 1rem 0;
+.celebration-emojis span {
+  font-size: 2em;
+  animation: float 2s ease-in-out infinite;
 }
 
-.better-luck {
-  font-size: 1.2rem;
-  color: #bdbdbd;
-  margin: 1rem 0;
+.celebration-emojis span:nth-child(2) {
+  animation-delay: 0.3s;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.celebration-emojis span:nth-child(3) {
+  animation-delay: 0.6s;
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(50px);
+@keyframes popIn {
+  0% {
     opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
   }
-  to {
-    transform: translateY(0);
+  70% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
     opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
   }
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
-}
-
-@keyframes glow {
-  0%, 100% { text-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
-  50% { text-shadow: 0 0 20px rgba(76, 175, 80, 0.8); }
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15px); }
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px) rotate(10deg);
+  }
 }
 
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+/* Round winner specific styles */
+.winner-display.round-winner.is-winner h2 {
+  background: linear-gradient(45deg, #4CAF50, #8BC34A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .winner-display {
+    width: 90%;
+    max-width: 350px;
+    padding: 20px;
+  }
+
+  .trophy-icon, .medal-icon {
+    font-size: 3em;
+  }
+
+  .winner-display h2 {
+    font-size: 1.5em;
+  }
+
+  .winner-name {
+    font-size: 1.2em;
+  }
+
+  .winner-message, .loser-message {
+    font-size: 1em;
+  }
 } 

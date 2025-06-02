@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import { Socket } from 'socket.io-client';
 import './JoinGame.css';
 
 const debugLog = (action: string, data?: any) => {
@@ -7,11 +6,10 @@ const debugLog = (action: string, data?: any) => {
 };
 
 interface JoinGameProps {
-  socket: Socket | null;
-  onJoinSuccess: (username: string) => void;
+  onJoin: (username: string) => Promise<void>;
 }
 
-export const JoinGame: React.FC<JoinGameProps> = ({ socket, onJoinSuccess }) => {
+export const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
   const [username, setUsername] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,39 +24,20 @@ export const JoinGame: React.FC<JoinGameProps> = ({ socket, onJoinSuccess }) => 
       return;
     }
 
-    if (!socket?.connected) {
-      debugLog('Submit attempted without connection');
-      setError('Not connected to server');
-      return;
-    }
-    
     debugLog('Submitting join request', { username: trimmedUsername });
     setIsAnimating(true);
     setError(null);
 
     try {
-      // Emit join_game event and wait for response
-      socket.emit('join_game', trimmedUsername);
-      
-      // Listen for success response
-      socket.once('join_game_success', (response) => {
-        debugLog('Join game success', response);
-        setIsAnimating(false);
-        onJoinSuccess(trimmedUsername);
-      });
-
-      // Listen for error response
-      socket.once('error', (err) => {
-        debugLog('Join game error', err);
-        setError(err.message || 'Failed to join game');
-        setIsAnimating(false);
-      });
+      localStorage.setItem('gameUsername', trimmedUsername);
+      await onJoin(trimmedUsername);
+      setIsAnimating(false);
     } catch (err) {
       debugLog('Join game error', err);
-      setError('Failed to join game');
+      setError(err instanceof Error ? err.message : 'Failed to join game');
       setIsAnimating(false);
     }
-  }, [socket, username, onJoinSuccess]);
+  }, [username, onJoin]);
 
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUsername = e.target.value;
@@ -82,7 +61,7 @@ export const JoinGame: React.FC<JoinGameProps> = ({ socket, onJoinSuccess }) => 
               minLength={2}
               maxLength={15}
               required
-              disabled={!socket?.connected || isAnimating}
+              disabled={isAnimating}
             />
             <div className="input-focus-indicator" />
           </div>
@@ -94,7 +73,7 @@ export const JoinGame: React.FC<JoinGameProps> = ({ socket, onJoinSuccess }) => 
           <button 
             type="submit" 
             className={`join-button ${isAnimating ? 'animating' : ''}`}
-            disabled={!socket?.connected || !username.trim() || isAnimating}
+            disabled={!username.trim() || isAnimating}
           >
             <span className="button-text">
               {isAnimating ? 'Joining...' : 'Join Game'}

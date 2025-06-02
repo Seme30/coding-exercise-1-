@@ -3,25 +3,33 @@
   backdrop-filter: blur(10px);
   border-radius: 15px;
   padding: 20px;
-  margin: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  min-width: 300px;
-  max-width: 600px;
-  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
 }
 
-.player-list h2 {
+.player-list h3 {
   color: #ffffff;
-  font-size: 1.5rem;
-  margin-bottom: 20px;
+  font-size: 1.2rem;
+  margin: 0;
+  padding: 10px;
   text-align: center;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
-.players {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 15px;
+.players-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 5px;
+  overflow-y: auto;
 }
 
 .player-card {
@@ -51,51 +59,39 @@
 .player-card.current-player {
   background: rgba(76, 175, 80, 0.15);
   box-shadow: 0 0 15px rgba(76, 175, 80, 0.2);
+  border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 .player-card.current-player::before {
   opacity: 1;
 }
 
-.player-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.player-card.round-winner {
+  background: rgba(255, 193, 7, 0.15);
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+  animation: winnerPulse 1.5s ease-in-out infinite;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.player-card.game-winner {
+  background: rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
+  animation: winnerPulse 2s ease-in-out infinite;
+  border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 .player-name {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: #ffffff;
   font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.current-player-indicator {
-  background: #4CAF50;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .player-score {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #8BC34A;
   font-weight: bold;
-}
-
-.player-joined {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.9rem;
-}
-
-.player-card.game-active {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .player-card.spinning {
@@ -103,40 +99,44 @@
   background: rgba(76, 175, 80, 0.2);
 }
 
-.no-players {
-  text-align: center;
-  color: rgba(255, 255, 255, 0.6);
-  padding: 30px;
-  font-size: 1.1rem;
+/* Custom scrollbar */
+.player-list::-webkit-scrollbar {
+  width: 8px;
 }
 
-.player-spinner {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  transform-origin: center center;
+.player-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
-.player-spinner.spinning {
-  animation: spinnerRotate 2s linear infinite;
+.player-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.player-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 @keyframes cardPulse {
   from {
-    transform: translateY(-2px);
+    transform: translateY(0);
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
   }
   to {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(76, 175, 80, 0.4);
   }
 }
 
-@keyframes spinnerRotate {
-  from {
-    transform: rotate(0deg);
+@keyframes winnerPulse {
+  0% {
+    transform: scale(1);
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
   }
 } 

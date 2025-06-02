@@ -1,1 +1,148 @@
- 
+.spinning-wheel-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px auto;
+}
+
+.spinning-wheel-container.small {
+  width: 150px;
+  height: 150px;
+}
+
+.spinning-wheel-container.medium {
+  width: 300px;
+  height: 300px;
+}
+
+.spinning-wheel-container.large {
+  width: 400px;
+  height: 400px;
+}
+
+.spinning-wheel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.3s ease;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.wheel-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20%;
+  height: 20%;
+  background: #4CAF50;
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+  z-index: 3;
+}
+
+.center-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 60%;
+  background: #8BC34A;
+  border-radius: 50%;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.wheel-segment {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 50%;
+  transform-origin: 0% 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 20px;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  transition: background-color 0.3s ease;
+}
+
+.segment-content {
+  transform: rotate(90deg);
+  text-align: center;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: bold;
+  font-size: 1.2em;
+  padding: 10px;
+  z-index: 2;
+}
+
+.player-initials {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.9em;
+  letter-spacing: 1px;
+}
+
+.winner-segment {
+  animation: winnerGlow 1s ease-in-out infinite alternate;
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: -15px;
+  width: 30px;
+  height: 50px;
+  background: #FF5252;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  z-index: 4;
+}
+
+.is-spinning {
+  transition: transform 2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes winnerGlow {
+  from {
+    filter: brightness(1);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  }
+  to {
+    filter: brightness(1.3);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* Add glow effect when spinning */
+.is-spinning .wheel-center {
+  animation: centerGlow 1s ease-in-out infinite alternate;
+}
+
+@keyframes centerGlow {
+  from { box-shadow: 0 0 20px rgba(76, 175, 80, 0.5); }
+  to { box-shadow: 0 0 40px rgba(76, 175, 80, 0.8); }
+}
+
+/* Make sure the wheel container is visible in the game layout */
+.game-wheel-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 400px;
+  margin: 20px auto;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+} 

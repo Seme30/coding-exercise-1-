@@ -1,16 +1,24 @@
 import React, { useEffect, useRef } from 'react';
 import './SpinningWheel.css';
 
+interface Player {
+  id: string;
+  username: string;
+  score: number;
+}
+
 interface SpinningWheelProps {
   isSpinning: boolean;
   size?: 'small' | 'medium' | 'large';
-  spokeCount?: number;
+  players: Player[];
+  currentWinner?: Player;
 }
 
 export const SpinningWheel: React.FC<SpinningWheelProps> = ({ 
   isSpinning, 
   size = 'medium',
-  spokeCount = 8
+  players,
+  currentWinner
 }) => {
   const wheelRef = useRef<HTMLDivElement>(null);
   const rotationRef = useRef(0);
@@ -22,18 +30,36 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
 
     const animate = () => {
       if (!isSpinning) {
-        // Slow down and stop
-        const currentRotation = rotationRef.current % 360;
-        const targetRotation = Math.round(currentRotation / 45) * 45; // Snap to nearest 45 degrees
-        const diff = targetRotation - currentRotation;
-        
-        if (Math.abs(diff) < 0.5) {
-          rotationRef.current = targetRotation;
-          wheel.style.transform = `rotate(${rotationRef.current}deg)`;
-          return;
+        // If there's a winner, rotate to point to their position
+        if (currentWinner) {
+          const winnerIndex = players.findIndex(p => p.id === currentWinner.id);
+          if (winnerIndex !== -1) {
+            const targetRotation = (360 / players.length) * winnerIndex;
+            const currentRotation = rotationRef.current % 360;
+            const diff = targetRotation - currentRotation;
+            
+            if (Math.abs(diff) < 0.5) {
+              rotationRef.current = targetRotation;
+              wheel.style.transform = `rotate(${rotationRef.current}deg)`;
+              return;
+            }
+            
+            rotationRef.current += diff * 0.1; // Smooth stop
+          }
+        } else {
+          // Default stop behavior
+          const currentRotation = rotationRef.current % 360;
+          const targetRotation = Math.round(currentRotation / 45) * 45;
+          const diff = targetRotation - currentRotation;
+          
+          if (Math.abs(diff) < 0.5) {
+            rotationRef.current = targetRotation;
+            wheel.style.transform = `rotate(${rotationRef.current}deg)`;
+            return;
+          }
+          
+          rotationRef.current += diff * 0.1;
         }
-        
-        rotationRef.current += diff * 0.1; // Smooth stop
       } else {
         // Spin with acceleration
         rotationRef.current += 10;
@@ -50,27 +76,38 @@ export const SpinningWheel: React.FC<SpinningWheelProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isSpinning]);
+  }, [isSpinning, currentWinner, players]);
 
-  const spokes = Array.from({ length: spokeCount }, (_, i) => {
-    const angle = (i * 360) / spokeCount;
+  // Calculate segments for each player
+  const segments = players.map((player, index) => {
+    const angle = (index * 360) / players.length;
+    const initials = player.username.slice(0, 2).toUpperCase();
     return (
       <div
-        key={i}
-        className="spoke"
-        style={{ transform: `rotate(${angle}deg)` }}
-      />
+        key={player.id}
+        className={`wheel-segment ${currentWinner?.id === player.id ? 'winner-segment' : ''}`}
+        style={{
+          transform: `rotate(${angle}deg)`,
+          backgroundColor: `hsl(${(360 / players.length) * index}, 70%, 60%)`
+        }}
+      >
+        <div className="segment-content">
+          <span className="player-initials">{initials}</span>
+        </div>
+      </div>
     );
   });
 
   return (
     <div className={`spinning-wheel-container ${size}`}>
-      <div className={`spinning-wheel ${isSpinning ? 'is-spinning' : ''}`} ref={wheelRef}>
-        <div className="wheel-hub">
-          <div className="hub-center" />
+      <div 
+        className={`spinning-wheel ${isSpinning ? 'is-spinning' : ''}`} 
+        ref={wheelRef}
+      >
+        <div className="wheel-center">
+          <div className="center-circle" />
         </div>
-        {spokes}
-        <div className="wheel-rim" />
+        {segments}
       </div>
       <div className="wheel-pointer" />
     </div>

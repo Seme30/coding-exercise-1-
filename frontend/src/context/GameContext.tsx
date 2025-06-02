@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { webSocketService } from '../services/websocket';
+import { GAME_CONSTANTS } from '../config/constants';
 
 // Types
 interface Player {
@@ -9,6 +10,15 @@ interface Player {
   score: number;
   joinedAt: number;
   isSpinning?: boolean;
+}
+
+interface Score {
+  id: string;
+  score: number;
+}
+
+interface Winner extends Player {
+  position: number;
 }
 
 interface GameState {
@@ -21,6 +31,7 @@ interface GameState {
   // Game State
   players: Player[];
   currentPlayerId?: string;
+  currentUsername?: string;
   gameActive: boolean;
   currentRound: number;
   totalRounds: number;
@@ -115,12 +126,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('disconnect', (reason) => {
-      debugLog('Socket disconnected', reason);
-      updateState({ 
+      console.log('[GameContext] Socket disconnected', {
+        reason,
+        currentState: {
+          currentPlayerId: state.currentPlayerId,
+          currentUsername: state.currentUsername,
+          hasJoined: state.hasJoined
+        }
+      });
+      updateState(prev => ({ 
+        ...prev, // Preserve all previous state
         isConnected: false,
         statusMessage: `Disconnected: ${reason}`,
         gameActive: false
-      });
+      }));
       
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
@@ -149,81 +168,44 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Game Events
     socket.on('player_update', (message) => {
       debugLog('Players updated', message);
-      if (message.data && Array.isArray(message.data.players)) {
-        updateState({ 
-          players: message.data.players.map((player: { joinedAt: string | number | Date; }) => ({
-            ...player,
-            joinedAt: typeof player.joinedAt === 'string' ? new Date(player.joinedAt).getTime() : player.joinedAt,
-            isSpinning: false
-          }))
-        });
-      }
-    });
-
-    socket.on('game_state_update', (gameState: {
-      active: boolean;
-      currentRound: number;
-      totalRounds: number;
-      statusMessage: string;
-    }) => {
-      debugLog('Game state updated', gameState);
-      updateState({
-        gameActive: gameState.active,
-        currentRound: gameState.currentRound,
-        totalRounds: gameState.totalRounds,
-        statusMessage: gameState.statusMessage
-      });
-    });
-
-    socket.on('round_winner', (winner: Player) => {
-      debugLog('Round winner', winner);
-      updateState({ roundWinner: winner });
-    });
-
-    socket.on('game_winner', (winner: Player) => {
-      debugLog('Game winner', winner);
-      updateState({ gameWinner: winner });
-    });
-
-    socket.on('player_joined', (player: { id: string; username: string; score: number; joinedAt: string | number }) => {
-      debugLog('Player joined', player);
-      if (socket.id === player.id) {
-        updateState({ 
-          currentPlayerId: player.id,
-          hasJoined: true,
-          statusMessage: 'Joined game'
-        });
-      }
-      updateState((prev: GameState) => ({
-        players: [...prev.players.filter(p => p.id !== player.id), {
-          ...player,
-          joinedAt: typeof player.joinedAt === 'string' ? new Date(player.joinedAt).getTime() : player.joinedAt,
+      // Handle both array and object formats from backend
+      const playerData = Array.isArray(message) ? message : 
+                        message.data?.players ? message.data.players :
+                        message.players ? message.players : [];
+      
+      updateState(prev => ({ 
+        players: playerData.map((player: any) => ({
+          id: player.id,
+          username: player.username,
+          score: player.score || 0,
+          joinedAt: typeof player.joinedAt === 'string' ? new Date(player.joinedAt).getTime() : player.joinedAt || Date.now(),
           isSpinning: false
-        }]
+        })),
+        // Keep the current player's ID when updating players
+        currentPlayerId: message.currentPlayerId || prev.currentPlayerId
       }));
-    });
-
-    socket.on('player_left', (playerId: string) => {
-      debugLog('Player left', { playerId });
-      updateState((prev: GameState) => ({
-        players: prev.players.filter((p: Player) => p.id !== playerId)
-      }));
-    });
-
-    socket.on('game_auto_start_pending', (data) => {
-      debugLog('Auto-start pending', data);
-      updateState({
-        statusMessage: `Game auto-starting in ${data.startingIn/1000}s (${data.currentPlayers} players)`,
-        gameActive: false
+      
+      debugLog('Updated players state', { 
+        playerCount: playerData.length, 
+        players: playerData 
       });
     });
 
-    socket.on('game_auto_start_cancelled', (data) => {
-      debugLog('Auto-start cancelled', data);
-      updateState({
-        statusMessage: `Waiting for players (${data.currentPlayers} players)`,
-        gameActive: false
-      });
+    socket.on('join_game_success', (response) => {
+      debugLog('Join game success', response);
+      updateState(prev => ({ 
+        hasJoined: true,
+        currentPlayerId: response.playerId,
+        currentUsername: response.username,
+        // Ensure we keep existing players if they're not in the response
+        players: response.players ? response.players.map((player: any) => ({
+          id: player.id,
+          username: player.username,
+          score: player.score || 0,
+          joinedAt: typeof player.joinedAt === 'string' ? new Date(player.joinedAt).getTime() : player.joinedAt || Date.now(),
+          isSpinning: false
+        })) : prev.players
+      }));
     });
 
     socket.on('game_start', (data) => {
@@ -232,7 +214,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         gameActive: true,
         currentRound: 1,
         totalRounds: data.totalRounds,
-        statusMessage: `Game Starting - ${data.totalRounds} rounds`
+        statusMessage: `Game Starting - ${data.totalRounds} rounds`,
+        roundWinner: undefined,
+        gameWinner: undefined,
+        players: data.players.map((player: Player) => ({
+          ...player,
+          isSpinning: false,
+          score: 0
+        }))
       });
     });
 
@@ -242,54 +231,136 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         gameActive: true,
         currentRound: data.roundNumber,
         totalRounds: data.totalRounds,
-        statusMessage: `Round ${data.roundNumber} of ${data.totalRounds} in progress`,
+        statusMessage: `Round ${data.roundNumber} of ${data.totalRounds} - Spinning!`,
+        roundWinner: undefined,
         players: prev.players.map(player => ({
           ...player,
           isSpinning: true
         }))
       }));
+
+      // Set a timer to match the backend's spin duration
+      if (data.spinDuration) {
+        setTimeout(() => {
+          updateState(prev => ({
+            players: prev.players.map(player => ({
+              ...player,
+              isSpinning: false
+            }))
+          }));
+        }, data.spinDuration);
+      }
     });
 
     socket.on('round_end', (data) => {
       debugLog('Round ended', data);
       updateState(prev => ({
         roundWinner: data.winner,
-        statusMessage: data.isLastRound 
-          ? `Game Over! ${data.winner.username} won the round!`
-          : `Round ${data.roundNumber} ended - ${data.winner.username} won! Next round starting soon`,
-        gameActive: !data.isLastRound,
+        statusMessage: `Round ${data.roundNumber} ended - ${data.winner.username} won!`,
         players: prev.players.map(player => ({
           ...player,
           isSpinning: false,
-          score: data.scores[player.id] || player.score
+          score: data.scores.find((s: Score) => s.id === player.id)?.score || player.score
         }))
       }));
+
+      if (!data.isLastRound && data.nextRoundStartsIn) {
+        setTimeout(() => {
+          updateState({
+            statusMessage: `Next round starting in ${data.nextRoundStartsIn / 1000} seconds`
+          });
+        }, 2000);
+      }
     });
 
     socket.on('game_over', (data) => {
-      debugLog('Game over', data);
-      const winner = data.winners[0];
-      updateState(prev => ({
-        gameActive: false,
-        gameWinner: {
-          ...winner,
-          score: data.finalScores[winner.id]
-        },
-        statusMessage: `Game Over! ${winner.username} wins!`,
-        players: prev.players.map(player => ({
-          ...player,
-          isSpinning: false,
-          score: data.finalScores[player.id] || player.score
-        }))
-      }));
+      // Always log the initial event data
+      console.log('[GameContext] Game over event received', {
+        data,
+        currentState: {
+          currentPlayerId: state.currentPlayerId,
+          currentUsername: state.currentUsername,
+          hasJoined: state.hasJoined,
+          players: state.players
+        }
+      });
+      
+      const winners = data.winners.filter((w: Winner) => w.position === 1);
+      
+      // Always log the winners processing
+      console.log('[GameContext] Processing winners', {
+        winners,
+        currentPlayerId: state.currentPlayerId,
+        currentUsername: state.currentUsername,
+        isCurrentPlayerWinner: winners.some((w: Winner) => 
+          w.id === state.currentPlayerId || w.username === state.currentUsername
+        )
+      });
+      
+      updateState(prev => {
+        const isCurrentPlayerWinner = winners.some((w: Winner) => 
+          w.id === prev.currentPlayerId || w.username === prev.currentUsername
+        );
+        const newState = {
+          ...prev, // Preserve all previous state
+          gameActive: false,
+          gameWinner: isCurrentPlayerWinner 
+            ? winners.find((w: Winner) => w.id === prev.currentPlayerId || w.username === prev.currentUsername)! 
+            : winners[0],
+          statusMessage: winners.length > 1 
+            ? `Game Over! It's a tie between ${winners.map((w: Winner) => w.username).join(' and ')}!`
+            : `Game Over! ${winners[0].username} wins with ${winners[0].score} points!`,
+          players: prev.players.map(player => ({
+            ...player,
+            isSpinning: false,
+            score: data.finalScores.find((s: Score) => s.id === player.id)?.score || player.score
+          }))
+        };
+        
+        // Always log the state update
+        console.log('[GameContext] Updated game state', {
+          newState,
+          currentPlayerId: prev.currentPlayerId,
+          currentUsername: prev.currentUsername,
+          hasJoined: prev.hasJoined,
+          isCurrentPlayerWinner,
+          winners
+        });
+        
+        return newState;
+      });
     });
 
+    socket.on('game_state_update', (state) => {
+      debugLog('Game state update', state);
+      updateState({
+        gameActive: state.isActive,
+        currentRound: state.currentRound,
+        totalRounds: state.totalRounds,
+        players: state.players.map((player: Player) => ({
+          ...player,
+          isSpinning: false // Reset spinning state on sync
+        })),
+        statusMessage: state.status
+      });
+    });
+
+    // Error handling
+    socket.on('game_error', (error) => {
+      debugLog('Game error', error);
+      updateState({
+        statusMessage: `Error: ${error.message}`,
+        connectionError: error.message
+      });
+    });
+
+    // Score updates
     socket.on('score_update', (data) => {
       debugLog('Score update', data);
       updateState(prev => ({
         players: prev.players.map(player => ({
           ...player,
-          score: data.scores[player.id] || player.score
+          score: data.scores.find((s: Score) => s.id === player.id)?.score || player.score
         }))
       }));
     });
@@ -305,6 +376,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           messagesReceived: state.messagesReceived + 1
         });
       }
+    });
+
+    socket.on('game_auto_start_pending', (data) => {
+      debugLog('Auto-start pending', data);
+      updateState({
+        statusMessage: `Auto-starting in ${data.startingIn / 1000}s (${data.currentPlayers} players)`
+      });
+    });
+
+    socket.on('game_auto_start_cancelled', (data) => {
+      debugLog('Auto-start cancelled', data);
+      updateState({
+        statusMessage: `Waiting for players (${data.currentPlayers}/${GAME_CONSTANTS.MIN_PLAYERS_TO_START})`
+      });
     });
   }, [measureLatency, state.messagesReceived, updateState]);
 
@@ -353,7 +438,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const successHandler = (response: any) => {
         debugLog('Join game success', response);
-        updateState({ hasJoined: true });
+        updateState({ 
+          hasJoined: true,
+          currentPlayerId: response.playerId,
+          currentUsername: response.username
+        });
         resolve();
       };
 
@@ -464,8 +553,8 @@ export const useGameConnection = () => {
 };
 
 export const useGameState = () => {
-  const { gameActive, currentRound, totalRounds, statusMessage, roundWinner, gameWinner } = useGame();
-  return { gameActive, currentRound, totalRounds, statusMessage, roundWinner, gameWinner };
+  const { gameActive, currentRound, totalRounds, statusMessage, roundWinner, gameWinner, currentUsername, hasJoined } = useGame();
+  return { gameActive, currentRound, totalRounds, statusMessage, roundWinner, gameWinner, currentUsername, hasJoined };
 };
 
 export const usePlayers = () => {

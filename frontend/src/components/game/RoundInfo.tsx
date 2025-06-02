@@ -19,11 +19,13 @@ export const RoundInfo: React.FC<RoundInfoProps> = ({
 }) => {
   const [countdown, setCountdown] = useState<number>(0);
   const [roundStatus, setRoundStatus] = useState<string>('');
+  const [showWinner, setShowWinner] = useState(false);
 
   useEffect(() => {
     if (isActive) {
       setCountdown(8); // 8 seconds per round
       setRoundStatus('Round in progress');
+      setShowWinner(false);
       const timer = setInterval(() => {
         setCountdown(prev => {
           const newCount = Math.max(0, prev - 1);
@@ -37,15 +39,21 @@ export const RoundInfo: React.FC<RoundInfoProps> = ({
       return () => clearInterval(timer);
     } else if (roundWinner) {
       setRoundStatus('Round complete');
+      setShowWinner(true);
     }
   }, [isActive, currentRound, roundWinner]);
+
+  // Reset winner display when round changes
+  useEffect(() => {
+    setShowWinner(false);
+  }, [currentRound]);
 
   return (
     <div className={`round-info ${isActive ? 'active' : ''}`}>
       <div className="round-header">
         <h2>Round {currentRound} of {totalRounds}</h2>
         <div className="round-status">{roundStatus}</div>
-        {isActive && (
+        {isActive && countdown > 0 && (
           <div className="round-countdown">
             <div className="countdown-circle">
               <svg viewBox="0 0 36 36">
@@ -73,8 +81,8 @@ export const RoundInfo: React.FC<RoundInfoProps> = ({
         )}
       </div>
       
-      {roundWinner && (
-        <div className="round-winner">
+      {(showWinner && roundWinner) && (
+        <div className="round-winner animate-winner">
           <div className="winner-announcement">
             Round Winner: <span className="winner-name">{roundWinner.username}</span>
           </div>

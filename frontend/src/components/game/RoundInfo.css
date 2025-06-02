@@ -1,4 +1,4 @@
-.round-info {
+/* .round-info {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border-radius: 15px;
@@ -9,12 +9,12 @@
   max-width: 600px;
   width: 100%;
   transition: all 0.3s ease;
-}
+} */
 
-.round-info.active {
+/* .round-info.active {
   background: rgba(76, 175, 80, 0.15);
   box-shadow: 0 0 20px rgba(76, 175, 80, 0.2);
-}
+} */
 
 .round-header {
   display: flex;
@@ -23,12 +23,12 @@
   margin-bottom: 20px;
 }
 
-.round-header h2 {
+/* .round-header h2 {
   color: #ffffff;
   font-size: 1.5rem;
   margin: 0;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
+} */
 
 .round-status {
   color: rgba(255, 255, 255, 0.9);

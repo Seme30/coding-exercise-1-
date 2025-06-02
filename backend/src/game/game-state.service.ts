@@ -66,7 +66,7 @@ export class GameStateService {
     }
 
     this.state.isActive = true;
-    this.state.currentRound = 1;
+    this.state.currentRound = 0;
     this.gameStatus = GameStatus.STARTING;
     this.gameStartTime = new Date();
     this.logger.log('Game started');
@@ -83,10 +83,8 @@ export class GameStateService {
     this.gameStatus = GameStatus.ROUND_END;
     this.state.roundStartTime = null;
     
-    if (this.state.currentRound >= this.state.totalRounds) {
+    if (this.state.currentRound === this.state.totalRounds) {
       this.endGame();
-    } else {
-      this.state.currentRound++;
     }
   }
 
@@ -134,7 +132,12 @@ export class GameStateService {
       throw new Error('Cannot start round: Game is not active');
     }
 
-    this.state.currentRound++;
+    if (this.state.currentRound === 0) {
+      this.state.currentRound = 1;
+    } else {
+      this.state.currentRound++;
+    }
+    
     this.gameStatus = GameStatus.ROUND_IN_PROGRESS;
     this.state.roundStartTime = Date.now();
     
@@ -154,7 +157,7 @@ export class GameStateService {
     // Update winner's score
     winner.score += 1;
 
-    const isLastRound = this.state.currentRound >= this.state.totalRounds;
+    const isLastRound = this.state.currentRound === this.state.totalRounds;
 
     return {
       winner,
@@ -165,7 +168,7 @@ export class GameStateService {
   }
 
   isLastRound(): boolean {
-    return this.state.currentRound >= this.state.totalRounds;
+    return this.state.currentRound === this.state.totalRounds;
   }
 
   pauseGame(): boolean {
