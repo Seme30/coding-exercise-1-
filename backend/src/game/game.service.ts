@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Player, PlayerUpdate } from './types/types';
+import { Player, PlayerUpdate, PlayerConnectionState } from './types/types';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -27,7 +27,11 @@ export class GameService {
       id: uuidv4(), // Unique game ID (different from socket ID)
       username,
       score: 0,
-      joinedAt: new Date()
+      joinedAt: new Date(),
+      socketId,
+      connectionState: 'connected',
+      disconnectionCount: 0,
+      temporaryDisconnect: false
     };
 
     this.players.set(socketId, player);
@@ -36,14 +40,48 @@ export class GameService {
     return player;
   }
 
+  markPlayerAsDisconnected(socketId: string, temporary: boolean = true): Player | null {
+    const player = this.players.get(socketId);
+    if (player) {
+      player.connectionState = 'disconnected';
+      player.lastDisconnectedAt = new Date();
+      player.disconnectionCount++;
+      player.temporaryDisconnect = temporary;
+      this.players.set(socketId, player);
+      this.logger.debug(`Player marked as disconnected: ${player.username} (${socketId}). Temporary: ${temporary}`);
+      return player;
+    }
+    return null;
+  }
+
+  markPlayerAsReconnected(socketId: string): Player | null {
+    const player = this.players.get(socketId);
+    if (player && player.connectionState === 'disconnected' && player.temporaryDisconnect) {
+      player.connectionState = 'connected';
+      player.lastReconnectedAt = new Date();
+      player.temporaryDisconnect = false;
+      this.players.set(socketId, player);
+      this.logger.debug(`Player reconnected: ${player.username} (${socketId})`);
+      return player;
+    }
+    return null;
+  }
+
   removePlayer(socketId: string): Player | null {
     const player = this.players.get(socketId);
     if (player) {
-      this.players.delete(socketId);
-      this.usernameToSocketId.delete(player.username.toLowerCase().trim());
-      this.logger.debug(`Player removed: ${player.username} (${socketId}). Remaining players: ${this.players.size}`);
+      // Only remove if player has left or has been disconnected for too long
+      if (player.connectionState === 'left' || 
+         (player.connectionState === 'disconnected' && !player.temporaryDisconnect)) {
+        this.players.delete(socketId);
+        this.usernameToSocketId.delete(player.username.toLowerCase().trim());
+        this.logger.log(`Player removed: ${player.username} (${socketId}). Remaining players: ${this.players.size}`);
+        return player;
+      } else {
+        this.logger.debug(`Not removing player ${player.username} as they are in state: ${player.connectionState}`);
+      }
     }
-    return player || null;
+    return null;
   }
 
   getPlayer(socketId: string): Player | undefined {
@@ -59,9 +97,13 @@ export class GameService {
     return Array.from(this.players.values());
   }
 
+  getConnectedPlayers(): Player[] {
+    return Array.from(this.players.values()).filter(p => p.connectionState === 'connected');
+  }
+
   getPlayerCount(): number {
-    const count = this.players.size;
-    this.logger.debug(`Current player count: ${count}`);
+    const count = this.getConnectedPlayers().length;
+    this.logger.debug(`Current connected player count: ${count}`);
     return count;
   }
 
@@ -76,7 +118,7 @@ export class GameService {
   }
 
   hasEnoughPlayers(minPlayers: number = 2): boolean {
-    return this.players.size >= minPlayers;
+    return this.getConnectedPlayers().length >= minPlayers;
   }
 
   clearAllPlayers(): void {

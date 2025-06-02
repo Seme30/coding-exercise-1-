@@ -14,24 +14,29 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
 }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [progress, setProgress] = useState<number>(100);
+  const [isUrgent, setIsUrgent] = useState<boolean>(false);
 
   const calculateTimeLeft = useCallback(() => {
     const now = Date.now();
-    const serverTimeOffset = now - serverTimestamp;
-    const adjustedEndTime = expectedEndTime + serverTimeOffset;
-    return Math.max(0, Math.floor((adjustedEndTime - now) / 1000));
+    const totalDuration = expectedEndTime - serverTimestamp;
+    const elapsed = now - serverTimestamp;
+    const remaining = totalDuration - elapsed;
+    return Math.max(0, Math.ceil(remaining / 1000));
   }, [serverTimestamp, expectedEndTime]);
 
   useEffect(() => {
-    const totalDuration = expectedEndTime - serverTimestamp;
     const updateTimer = () => {
       const secondsLeft = calculateTimeLeft();
       setTimeLeft(secondsLeft);
       
       // Calculate progress percentage
+      const totalDuration = expectedEndTime - serverTimestamp;
       const elapsed = Date.now() - serverTimestamp;
-      const progressPercent = Math.max(0, Math.min(100, (1 - elapsed / totalDuration) * 100));
+      const progressPercent = Math.max(0, Math.min(100, ((totalDuration - elapsed) / totalDuration) * 100));
       setProgress(progressPercent);
+
+      // Set urgent state for last 3 seconds
+      setIsUrgent(secondsLeft <= 3 && secondsLeft > 0);
 
       if (secondsLeft === 0) {
         onComplete?.();
@@ -42,8 +47,8 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
     // Initial update
     updateTimer();
 
-    // Update every 100ms for smooth progress animation
-    const intervalId = setInterval(updateTimer, 100);
+    // Update every 50ms for smoother countdown
+    const intervalId = setInterval(updateTimer, 50);
 
     return () => clearInterval(intervalId);
   }, [serverTimestamp, expectedEndTime, calculateTimeLeft, onComplete]);
@@ -65,12 +70,14 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
               a 15.9155 15.9155 0 0 1 0 31.831
               a 15.9155 15.9155 0 0 1 0 -31.831"
             fill="none"
-            stroke="#4CAF50"
+            stroke={isUrgent ? "#f44336" : "#4CAF50"}
             strokeWidth="3"
             strokeDasharray={`${progress}, 100`}
           />
         </svg>
-        <span className="countdown-number">{timeLeft}</span>
+        <span className={`countdown-number ${isUrgent ? 'urgent' : ''}`}>
+          {timeLeft}
+        </span>
       </div>
     </div>
   );

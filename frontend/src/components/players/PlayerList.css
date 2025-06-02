@@ -80,7 +80,68 @@
   border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
+.player-card.disconnected {
+  opacity: 0.7;
+  border: 2px solid #dc3545;
+  background: rgba(220, 53, 69, 0.1);
+  position: relative;
+  overflow: visible;
+}
+
+.player-card.disconnected::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(220, 53, 69, 0.1),
+    rgba(220, 53, 69, 0.1) 10px,
+    rgba(220, 53, 69, 0.2) 10px,
+    rgba(220, 53, 69, 0.2) 20px
+  );
+  pointer-events: none;
+}
+
+.disconnected-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 4px 8px;
+  font-size: 0.8em;
+  color: #fff;
+  background-color: #dc3545;
+  border-radius: 4px;
+  animation: pulse-red 2s infinite;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.4);
+}
+
+@keyframes pulse-red {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .player-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 1.1rem;
   color: #ffffff;
   font-weight: 500;

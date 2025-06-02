@@ -30,7 +30,6 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   private readonly logger = new Logger(GameGateway.name);
   private autoStartTimeout: NodeJS.Timeout | null = null;
   private readonly disconnectTimeouts: Map<string, NodeJS.Timeout> = new Map();
-  private readonly heartbeatIntervals: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(
     private readonly gameService: GameService,
@@ -54,57 +53,39 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       this.disconnectTimeouts.delete(client.id);
     }
 
-    // Start heartbeat interval
-    const heartbeatInterval = setInterval(() => {
-      client.emit('heartbeat');
-    }, 10000); // 10 seconds
-    
-    this.heartbeatIntervals.set(client.id, heartbeatInterval);
+    // If this was a reconnection of an existing player
+    const player = this.gameService.getPlayer(client.id);
+    if (player) {
+      this.gameService.markPlayerAsReconnected(client.id);
+      this.broadcastPlayerUpdate();
+    }
   }
 
   handleDisconnect(client: Socket) {
-    // Clear heartbeat interval
-    const heartbeatInterval = this.heartbeatIntervals.get(client.id);
-    if (heartbeatInterval) {
-      clearInterval(heartbeatInterval);
-      this.heartbeatIntervals.delete(client.id);
-    }
-    
     // Clear any existing timeout for this client
     const existingTimeout = this.disconnectTimeouts.get(client.id);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
 
-    // Set a new timeout to remove the player after a grace period
-    const timeout = setTimeout(() => {
-      const player = this.gameService.removePlayer(client.id);
-      if (player) {
-        const allPlayers = this.gameService.getAllPlayers();
-        this.gameStateService.updatePlayers(allPlayers);
-        this.broadcastPlayerUpdate();
-        
-        // If game hasn't started, check if we need to cancel auto-start
-        if (!this.gameStateService.isGameInProgress() && this.autoStartTimeout) {
-          if (this.gameService.getPlayerCount() < GAME_CONSTANTS.MIN_PLAYERS_TO_START) {
-            clearTimeout(this.autoStartTimeout);
-            this.autoStartTimeout = null;
-            
-            this.server.emit(GameEvents.GAME_AUTO_START_CANCELLED, {
-              message: 'Auto-start cancelled: Not enough players',
-              currentPlayers: this.gameService.getPlayerCount()
-            });
-          }
-        }
-        
-        this.logger.debug(
-          `Player ${player.username} disconnected. Remaining players: ${this.gameService.getPlayerCount()}`
-        );
-      }
-      this.disconnectTimeouts.delete(client.id);
-    }, 5000); // 5 second grace period
+    // Get the player before setting the timeout
+    const player = this.gameService.getPlayer(client.id);
+    if (!player) return;
 
-    this.disconnectTimeouts.set(client.id, timeout);
+    // Mark as temporarily disconnected
+    this.gameService.markPlayerAsDisconnected(client.id, true);
+    
+    // Broadcast temporary disconnection event
+    this.server.emit(GameEvents.PLAYER_LEFT, {
+      username: player.username,
+      id: player.id,
+      reason: 'disconnected',
+      timestamp: new Date(),
+      temporary: true
+    });
+
+    // Update all clients with new player states
+    this.broadcastPlayerUpdate();
   }
 
   @SubscribeMessage('join_game')
@@ -153,14 +134,7 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   @SubscribeMessage('heartbeat')
   handleHeartbeat(client: Socket): void {
-    client.emit('heartbeat_ack', { timestamp: new Date() });
-    
-    // If there's a pending disconnect timeout, clear it
-    const existingTimeout = this.disconnectTimeouts.get(client.id);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
-      this.disconnectTimeouts.delete(client.id);
-    }
+    // Heartbeat handling logic
   }
 
   @SubscribeMessage('start_game')
@@ -320,14 +294,41 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
 
   @SubscribeMessage('leave_game')
-  handleLeaveGame(client: Socket): void {
-    const player = this.gameService.removePlayer(client.id);
-    if (player) {
-      this.broadcastPlayerUpdate();
+  handleLeaveGame(client: Socket, data: { reason: string }): void {
+    const player = this.gameService.getPlayer(client.id);
+    if (!player) return;
+
+    // Mark as permanently disconnected
+    this.gameService.markPlayerAsDisconnected(client.id, false);
+    
+    // Remove the player
+    const removedPlayer = this.gameService.removePlayer(client.id);
+    if (removedPlayer) {
+      // Broadcast final leave event
       this.server.emit(GameEvents.PLAYER_LEFT, {
-        username: player.username,
-        timestamp: new Date()
+        username: removedPlayer.username,
+        id: removedPlayer.id,
+        reason: data.reason || 'left',
+        timestamp: new Date(),
+        temporary: false
       });
+      
+      // Update all clients
+      this.broadcastPlayerUpdate();
+      
+      this.logger.debug(
+        `Player ${removedPlayer.username} left the game. Remaining players: ${this.gameService.getPlayerCount()}`
+      );
+
+      // Check if we need to end the game
+      if (this.gameStateService.isGameInProgress() && 
+          !this.gameService.hasEnoughPlayers(GAME_CONSTANTS.MIN_PLAYERS_TO_START)) {
+        this.server.emit(GameEvents.ERROR, {
+          message: 'Game ended: Not enough players remaining after player left',
+          code: 'GAME_END_INSUFFICIENT_PLAYERS'
+        });
+        this.endGame();
+      }
     }
   }
 

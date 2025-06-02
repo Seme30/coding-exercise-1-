@@ -11,6 +11,7 @@ interface Player {
   username: string;
   score: number;
   isSpinning?: boolean;
+  isDisconnected?: boolean;
 }
 
 interface PlayerListProps {
@@ -35,13 +36,22 @@ export const PlayerList: React.FC<PlayerListProps> = ({
         {sortedPlayers.map((player) => (
           <div 
             key={player.id} 
-            className={`player-card ${player.id === currentPlayerId ? 'current-player' : ''} 
+            className={`player-card 
+              ${player.id === currentPlayerId ? 'current-player' : ''} 
               ${player.id === roundWinner?.id ? 'round-winner' : ''}
               ${player.id === gameWinner?.id ? 'game-winner' : ''}
-              ${player.isSpinning ? 'spinning' : ''}`}
+              ${player.isSpinning ? 'spinning' : ''}
+              ${player.isDisconnected ? 'disconnected' : ''}`}
           >
-            <div className="player-name">{player.username}</div>
-            <div className="player-score">Score: {player.score}</div>
+            <div className="player-info">
+              <div className="player-name">
+                {player.username}
+                {player.isDisconnected && (
+                  <span className="disconnected-badge">Disconnected</span>
+                )}
+              </div>
+              <div className="player-score">Score: {player.score}</div>
+            </div>
           </div>
         ))}
       </div>

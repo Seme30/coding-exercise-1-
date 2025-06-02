@@ -11,18 +11,15 @@ export class GameStateService {
     currentRound: 0,
     totalRounds: GAME_CONSTANTS.TOTAL_ROUNDS,
     players: [],
+    gameActive: false,
     countdown: null,
     roundStartTime: null,
-    gameActive: false
+    disconnectedPlayers: new Set<string>()
   };
 
   private gameStatus: GameStatus = GameStatus.WAITING;
 
-  private roundHistory: Array<{
-    roundNumber: number;
-    winner: Player;
-    scores: Array<{ id: string; username: string; score: number; }>;
-  }> = [];
+  private roundHistory: Array<RoundResult> = [];
 
   private roundTimeout: NodeJS.Timeout | null = null;
 
@@ -93,16 +90,16 @@ export class GameStateService {
     this.state.isActive = false;
     this.logger.log('Game ended');
   }
-
   resetGame(): void {
     this.state = {
       isActive: false,
       currentRound: 0,
       totalRounds: GAME_CONSTANTS.TOTAL_ROUNDS,
       players: [],
+      gameActive: false,
       countdown: null,
       roundStartTime: null,
-      gameActive: false
+      disconnectedPlayers: new Set<string>()
     };
     this.gameStatus = GameStatus.WAITING;
     this.gameStartTime = null;
@@ -195,11 +192,7 @@ export class GameStateService {
   }
 
   addToRoundHistory(roundResult: RoundResult): void {
-    this.roundHistory.push({
-      roundNumber: roundResult.roundNumber,
-      winner: roundResult.winner,
-      scores: roundResult.scores
-    });
+    this.roundHistory.push(roundResult);
   }
 
   getRoundHistory(): typeof this.roundHistory {
@@ -285,5 +278,44 @@ export class GameStateService {
     this.roundHistory = [];
     
     this.logger.log('Game prepared for new round with existing players');
+  }
+
+  public handlePlayerDisconnection(playerId: string): boolean {
+    // Add to disconnected players set
+    this.state.disconnectedPlayers.add(playerId);
+
+    // If game is active, handle mid-game disconnection
+    if (this.isGameInProgress()) {
+      this.logger.log(`Player ${playerId} disconnected during active game`);
+      
+      // Remove player from current round's potential winners if game is active
+      this.state.players = this.state.players.filter(player => player.id !== playerId);
+
+      // Check if we need to end the game (not enough players)
+      const activePlayers = this.state.players.length;
+      if (activePlayers < GAME_CONSTANTS.MIN_PLAYERS_TO_START) {
+        this.logger.warn('Not enough players to continue the game after disconnection');
+        return true; // Signal that the game should end
+      }
+    } else {
+      // If game is not active, just remove the player
+      this.state.players = this.state.players.filter(player => player.id !== playerId);
+    }
+
+    return false;
+  }
+
+  public handlePlayerReconnection(playerId: string): void {
+    // Remove from disconnected players set
+    this.state.disconnectedPlayers.delete(playerId);
+  }
+
+  public getDisconnectedPlayers(): string[] {
+    return Array.from(this.state.disconnectedPlayers);
+  }
+
+  public removePlayer(playerId: string): void {
+    this.state.players = this.state.players.filter(player => player.id !== playerId);
+    this.state.disconnectedPlayers.delete(playerId);
   }
 }
