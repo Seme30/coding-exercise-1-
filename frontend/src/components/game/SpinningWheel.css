@@ -4,6 +4,7 @@
   justify-content: center;
   align-items: center;
   margin: 20px auto;
+  perspective: 1000px;
 }
 
 .spinning-wheel-container.small {
@@ -29,7 +30,11 @@
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.2);
-  transition: transform 0.3s ease;
+  transform-style: preserve-3d;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 0 30px rgba(0, 0, 0, 0.2),
+    inset 0 0 20px rgba(255, 255, 255, 0.1);
   z-index: 1;
   overflow: hidden;
 }
@@ -41,10 +46,13 @@
   transform: translate(-50%, -50%);
   width: 20%;
   height: 20%;
-  background: #4CAF50;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
   border-radius: 50%;
-  box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+  box-shadow: 
+    0 0 20px rgba(76, 175, 80, 0.5),
+    inset 0 0 10px rgba(255, 255, 255, 0.3);
   z-index: 3;
+  transition: all 0.3s ease;
 }
 
 .center-circle {
@@ -54,9 +62,20 @@
   transform: translate(-50%, -50%);
   width: 60%;
   height: 60%;
-  background: #8BC34A;
+  background: linear-gradient(135deg, #8BC34A, #7cb342);
   border-radius: 50%;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.center-dot {
+  width: 30%;
+  height: 30%;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 .wheel-segment {
@@ -71,18 +90,37 @@
   justify-content: center;
   padding-bottom: 20px;
   clip-path: polygon(100% 0, 100% 100%, 0 100%);
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.segment-3d-effect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  transform: translateZ(1px);
 }
 
 .segment-content {
   transform: rotate(90deg);
   text-align: center;
   color: white;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 
+    1px 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 5px rgba(255, 255, 255, 0.2);
   font-weight: bold;
   font-size: 1.2em;
   padding: 10px;
   z-index: 2;
+  position: relative;
 }
 
 .player-initials {
@@ -91,10 +129,15 @@
   border-radius: 12px;
   font-size: 0.9em;
   letter-spacing: 1px;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(2px);
 }
 
 .winner-segment {
-  animation: winnerGlow 1s ease-in-out infinite alternate;
+  animation: winnerPulse 1s ease-in-out infinite alternate;
+  z-index: 2;
 }
 
 .wheel-pointer {
@@ -102,34 +145,155 @@
   top: -15px;
   width: 30px;
   height: 50px;
-  background: #FF5252;
+  background: linear-gradient(to bottom, #FF5252, #ff1744);
   clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
   z-index: 4;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.pointer-light {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+  animation: pointerGlow 1s ease-in-out infinite alternate;
 }
 
 .is-spinning {
-  transition: transform 2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: spinGlow 1s ease-in-out infinite alternate;
 }
 
-@keyframes winnerGlow {
+.is-spinning .wheel-center {
+  animation: centerPulse 0.5s ease-in-out infinite alternate;
+}
+
+.winner-particles {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #FFD700;
+  border-radius: 50%;
+  animation: particleFloat 2s ease-in-out infinite;
+}
+
+/* Particle positions */
+.particle-0 { top: 0; left: 50%; transform: translate(-50%, -50%); animation-delay: 0s; }
+.particle-1 { top: 25%; right: 0; animation-delay: 0.2s; }
+.particle-2 { bottom: 0; right: 25%; animation-delay: 0.4s; }
+.particle-3 { bottom: 25%; left: 0; animation-delay: 0.6s; }
+.particle-4 { top: 25%; left: 25%; animation-delay: 0.8s; }
+.particle-5 { top: 75%; right: 25%; animation-delay: 1s; }
+.particle-6 { bottom: 25%; right: 25%; animation-delay: 1.2s; }
+.particle-7 { top: 50%; left: 0; animation-delay: 1.4s; }
+
+@keyframes winnerPulse {
   from {
-    filter: brightness(1);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    filter: brightness(1) drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+    transform-origin: 0% 100%;
+    transform: rotate(var(--rotation)) scale(1);
   }
   to {
-    filter: brightness(1.3);
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    filter: brightness(1.3) drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
+    transform-origin: 0% 100%;
+    transform: rotate(var(--rotation)) scale(1.05);
   }
 }
 
-/* Add glow effect when spinning */
-.is-spinning .wheel-center {
-  animation: centerGlow 1s ease-in-out infinite alternate;
+@keyframes spinGlow {
+  from {
+    box-shadow: 
+      0 0 30px rgba(0, 0, 0, 0.2),
+      inset 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+  to {
+    box-shadow: 
+      0 0 50px rgba(76, 175, 80, 0.3),
+      inset 0 0 40px rgba(255, 255, 255, 0.2);
+  }
 }
 
-@keyframes centerGlow {
-  from { box-shadow: 0 0 20px rgba(76, 175, 80, 0.5); }
-  to { box-shadow: 0 0 40px rgba(76, 175, 80, 0.8); }
+@keyframes centerPulse {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 0 40px rgba(76, 175, 80, 0.8);
+  }
+}
+
+@keyframes pointerGlow {
+  from {
+    opacity: 0.5;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+  }
+  to {
+    opacity: 1;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 1);
+  }
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(
+      calc(cos(var(--angle)) * 30px),
+      calc(sin(var(--angle)) * 30px)
+    ) scale(1.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Add 3D perspective effect when spinning */
+.is-spinning .wheel-segment {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .spinning-wheel-container.large {
+    width: 300px;
+    height: 300px;
+  }
+
+  .player-initials {
+    font-size: 0.8em;
+    padding: 3px 6px;
+  }
+}
+
+/* Add smooth transition for winner highlight */
+.winner-segment .segment-content {
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.show-particles .winner-segment .segment-content {
+  filter: brightness(1.2);
+  transform: rotate(90deg) scale(1.05);
 }
 
 /* Make sure the wheel container is visible in the game layout */
