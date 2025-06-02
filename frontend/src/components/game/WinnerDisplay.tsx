@@ -3,10 +3,6 @@ import confetti from 'canvas-confetti';
 import { FaTimes, FaTrophy, FaMedal } from 'react-icons/fa';
 import './WinnerDisplay.css';
 
-const debugLog = (action: string, data?: any) => {
-  console.log(`[WinnerDisplay Component] ${action}`, data ?? '');
-};
-
 interface Player {
   id: string;
   username: string;
@@ -30,43 +26,10 @@ export const WinnerDisplay: React.FC<WinnerDisplayProps> = ({
   currentUsername,
   onClose 
 }) => {
-  // Always log when component mounts
-  console.log('[WinnerDisplay Component] Component mounted', {
-    winner,
-    isGameWinner,
-    currentPlayerId,
-    currentUsername,
-    hasCurrentPlayerId: Boolean(currentPlayerId),
-    hasCurrentUsername: Boolean(currentUsername)
-  });
-
   const isCurrentPlayerWinner = (currentPlayerId && winner.id === currentPlayerId) || 
                               (currentUsername && winner.username === currentUsername);
 
-  // Always log winner state calculation
-  console.log('[WinnerDisplay Component] Winner state calculated', {
-    isCurrentPlayerWinner,
-    winnerId: winner.id,
-    winnerUsername: winner.username,
-    currentPlayerId,
-    currentUsername,
-    comparison: {
-      currentPlayerIdExists: Boolean(currentPlayerId),
-      currentUsernameExists: Boolean(currentUsername),
-      idsMatch: currentPlayerId && winner.id === currentPlayerId,
-      usernamesMatch: currentUsername && winner.username === currentUsername
-    }
-  });
-
   const fireConfetti = useCallback(() => {
-    // Always log confetti attempts
-    console.log('[WinnerDisplay Component] Attempting to fire confetti', {
-      isGameWinner,
-      isCurrentPlayerWinner,
-      currentUsername,
-      winnerUsername: winner.username
-    });
-
     // Basic confetti burst
     const basicBurst = () => {
       confetti({
@@ -174,23 +137,13 @@ export const WinnerDisplay: React.FC<WinnerDisplayProps> = ({
       basicBurst();
       setTimeout(sideCannons, 300);
     }
-  }, [isGameWinner, isCurrentPlayerWinner, currentUsername, winner.username]);
+  }, [isGameWinner, isCurrentPlayerWinner]);
 
   useEffect(() => {
-    // Always log effect execution
-    console.log('[WinnerDisplay Component] Effect running', {
-      isCurrentPlayerWinner,
-      currentPlayerId,
-      currentUsername,
-      winnerId: winner.id,
-      winnerUsername: winner.username,
-      isGameWinner
-    });
-    
     if (isCurrentPlayerWinner) {
       fireConfetti();
     }
-  }, [isCurrentPlayerWinner, fireConfetti, winner.id, winner.username, isGameWinner, currentPlayerId, currentUsername]);
+  }, [isCurrentPlayerWinner, fireConfetti]);
 
   const renderWinnerContent = () => (
     <div className="winner-content">

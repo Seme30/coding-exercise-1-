@@ -79,10 +79,6 @@ const GameContext = createContext<GameContextType | null>(null);
 
 type Timeout = ReturnType<typeof setTimeout>;
 
-const debugLog = (action: string, data?: any) => {
-  console.log(`[GameContext] ${action}`, data ?? '');
-};
-
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<GameState>(defaultGameState);
   const mountedRef = useRef(true);
@@ -111,7 +107,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setupSocketListeners = useCallback((socket: Socket) => {
     socket.on('connect', () => {
-      debugLog('Socket connected', { id: socket.id });
       updateState({ 
         isConnected: true, 
         isConnecting: false,
@@ -126,16 +121,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('[GameContext] Socket disconnected', {
-        reason,
-        currentState: {
-          currentPlayerId: state.currentPlayerId,
-          currentUsername: state.currentUsername,
-          hasJoined: state.hasJoined
-        }
-      });
       updateState(prev => ({ 
-        ...prev, // Preserve all previous state
+        ...prev,
         isConnected: false,
         statusMessage: `Disconnected: ${reason}`,
         gameActive: false
@@ -148,7 +135,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('connect_error', (err) => {
-      debugLog('Connection error', err);
       updateState({ 
         isConnected: false,
         isConnecting: false,
@@ -158,7 +144,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('error', (err) => {
-      debugLog('Socket error', err);
       updateState({ 
         connectionError: err.message,
         statusMessage: 'Error occurred'
@@ -167,7 +152,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Game Events
     socket.on('player_update', (message) => {
-      debugLog('Players updated', message);
       // Handle both array and object formats from backend
       const playerData = Array.isArray(message) ? message : 
                         message.data?.players ? message.data.players :
@@ -184,15 +168,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Keep the current player's ID when updating players
         currentPlayerId: message.currentPlayerId || prev.currentPlayerId
       }));
-      
-      debugLog('Updated players state', { 
-        playerCount: playerData.length, 
-        players: playerData 
-      });
     });
 
     socket.on('join_game_success', (response) => {
-      debugLog('Join game success', response);
       updateState(prev => ({ 
         hasJoined: true,
         currentPlayerId: response.playerId,
@@ -209,7 +187,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('game_start', (data) => {
-      debugLog('Game starting', data);
       updateState({
         gameActive: true,
         currentRound: 1,
@@ -226,7 +203,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('round_start', (data) => {
-      debugLog('Round starting', data);
       updateState(prev => ({
         gameActive: true,
         currentRound: data.roundNumber,
@@ -253,7 +229,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('round_end', (data) => {
-      debugLog('Round ended', data);
       updateState(prev => ({
         roundWinner: data.winner,
         statusMessage: `Round ${data.roundNumber} ended - ${data.winner.username} won!`,
@@ -274,35 +249,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('game_over', (data) => {
-      // Always log the initial event data
-      console.log('[GameContext] Game over event received', {
-        data,
-        currentState: {
-          currentPlayerId: state.currentPlayerId,
-          currentUsername: state.currentUsername,
-          hasJoined: state.hasJoined,
-          players: state.players
-        }
-      });
-      
       const winners = data.winners.filter((w: Winner) => w.position === 1);
-      
-      // Always log the winners processing
-      console.log('[GameContext] Processing winners', {
-        winners,
-        currentPlayerId: state.currentPlayerId,
-        currentUsername: state.currentUsername,
-        isCurrentPlayerWinner: winners.some((w: Winner) => 
-          w.id === state.currentPlayerId || w.username === state.currentUsername
-        )
-      });
       
       updateState(prev => {
         const isCurrentPlayerWinner = winners.some((w: Winner) => 
           w.id === prev.currentPlayerId || w.username === prev.currentUsername
         );
         const newState = {
-          ...prev, // Preserve all previous state
+          ...prev,
           gameActive: false,
           gameWinner: isCurrentPlayerWinner 
             ? winners.find((w: Winner) => w.id === prev.currentPlayerId || w.username === prev.currentUsername)! 
@@ -317,56 +271,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }))
         };
         
-        // Always log the state update
-        console.log('[GameContext] Updated game state', {
-          newState,
-          currentPlayerId: prev.currentPlayerId,
-          currentUsername: prev.currentUsername,
-          hasJoined: prev.hasJoined,
-          isCurrentPlayerWinner,
-          winners
-        });
-        
         return newState;
       });
     });
 
     socket.on('game_state_update', (state) => {
-      debugLog('Game state update', state);
       updateState({
         gameActive: state.isActive,
         currentRound: state.currentRound,
         totalRounds: state.totalRounds,
         players: state.players.map((player: Player) => ({
           ...player,
-          isSpinning: false // Reset spinning state on sync
+          isSpinning: false
         })),
         statusMessage: state.status
       });
     });
 
-    // Error handling
-    socket.on('game_error', (error) => {
-      debugLog('Game error', error);
-      updateState({
-        statusMessage: `Error: ${error.message}`,
-        connectionError: error.message
-      });
-    });
-
-    // Score updates
-    socket.on('score_update', (data) => {
-      debugLog('Score update', data);
-      updateState(prev => ({
-        players: prev.players.map(player => ({
-          ...player,
-          score: data.scores.find((s: Score) => s.id === player.id)?.score || player.score
-        }))
-      }));
-    });
-
     socket.on('test_response', (data) => {
-      debugLog('Received test response', data);
       const now = Date.now();
       
       if (data.received?.type === 'ping' && data.received.clientTime) {
@@ -379,14 +301,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('game_auto_start_pending', (data) => {
-      debugLog('Auto-start pending', data);
       updateState({
         statusMessage: `Auto-starting in ${data.startingIn / 1000}s (${data.currentPlayers} players)`
       });
     });
 
     socket.on('game_auto_start_cancelled', (data) => {
-      debugLog('Auto-start cancelled', data);
       updateState({
         statusMessage: `Waiting for players (${data.currentPlayers}/${GAME_CONSTANTS.MIN_PLAYERS_TO_START})`
       });
@@ -395,7 +315,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize WebSocket connection
   useEffect(() => {
-    debugLog('Initializing WebSocket connection');
     mountedRef.current = true;
 
     try {
@@ -406,7 +325,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateState({ socket });
       }
     } catch (err) {
-      debugLog('Setup error', err);
       updateState({ 
         connectionError: err instanceof Error ? err.message : 'Unknown error',
         isConnecting: false
@@ -414,7 +332,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return () => {
-      debugLog('Cleaning up WebSocket connection');
       mountedRef.current = false;
       
       if (pingIntervalRef.current) {
@@ -437,7 +354,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       state.socket!.emit('join_game', username);
 
       const successHandler = (response: any) => {
-        debugLog('Join game success', response);
         updateState({ 
           hasJoined: true,
           currentPlayerId: response.playerId,
@@ -447,7 +363,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       const errorHandler = (error: Error) => {
-        debugLog('Join game error', error);
         reject(error);
       };
 
@@ -472,12 +387,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       state.socket!.emit('start_game');
 
       const successHandler = () => {
-        debugLog('Game started');
         resolve();
       };
 
       const errorHandler = (error: Error) => {
-        debugLog('Start game error', error);
         reject(error);
       };
 
@@ -515,7 +428,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setupSocketListeners(newSocket);
       updateState({ socket: newSocket });
     } catch (err) {
-      debugLog('Reconnection error', err);
       updateState({ 
         connectionError: err instanceof Error ? err.message : 'Unknown error',
         isConnecting: false

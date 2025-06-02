@@ -10,10 +10,6 @@ import { FaChevronRight, FaChevronLeft, FaUsers, FaUserFriends } from 'react-ico
 import './Game.css';
 import { GAME_CONSTANTS } from '../config/constants';
 
-const debugLog = (action: string, data?: any) => {
-  console.log(`[Game Component] ${action}`, data ?? '');
-};
-
 export const Game: React.FC = () => {
   const { isConnected, isConnecting, connectionError, socket, latency, reconnect } = useGameConnection();
   const { gameActive, currentRound, totalRounds, statusMessage, roundWinner, gameWinner, hasJoined, currentUsername } = useGameState();
@@ -23,33 +19,10 @@ export const Game: React.FC = () => {
   const [isPlayerListCollapsed, setIsPlayerListCollapsed] = useState(false);
 
   useEffect(() => {
-    // Always log current player state
-    console.log('[Game Component] Current player state', { 
-      currentPlayerId,
-      currentUsername,
-      currentPlayer: players.find(p => p.id === currentPlayerId),
-      playersCount: players.length,
-      players,
-      hasJoined
-    });
+    const currentPlayer = players.find(p => p.id === currentPlayerId);
   }, [players, currentPlayerId, hasJoined, currentUsername]);
 
   useEffect(() => {
-    // Always log game winner state changes
-    console.log('[Game Component] Game winner state changed', {
-      gameWinner,
-      currentPlayerId,
-      currentUsername,
-      hasJoined,
-      gameActive,
-      showWinnerDisplay,
-      isCurrentPlayerWinner: gameWinner?.id === currentPlayerId,
-      playerState: {
-        currentPlayer: players.find(p => p.id === currentPlayerId),
-        hasCurrentPlayer: Boolean(players.find(p => p.id === currentPlayerId))
-      }
-    });
-
     if (gameWinner && !gameActive && hasJoined) {
       setShowWinnerDisplay(true);
     }
@@ -57,10 +30,9 @@ export const Game: React.FC = () => {
 
   const handleJoinSuccess = async (username: string) => {
     try {
-      debugLog('Joining game', { username });
       await joinGame(username);
     } catch (err) {
-      debugLog('Join game error', err);
+      // Handle error silently
     }
   };
 
@@ -77,7 +49,7 @@ export const Game: React.FC = () => {
   const isCurrentPlayerWinner = gameWinner?.id === currentPlayerId;
   const isAutoStarting = statusMessage.toLowerCase().includes('auto-starting');
   const currentPlayer = players.find(p => p.id === currentPlayerId);
-  const minPlayersToStart = GAME_CONSTANTS.MIN_PLAYERS_TO_START
+  const minPlayersToStart = GAME_CONSTANTS.MIN_PLAYERS_TO_START;
 
   return (
     <AppLayout>
@@ -168,33 +140,19 @@ export const Game: React.FC = () => {
               winner={roundWinner}
               isGameWinner={false}
               currentPlayerId={currentPlayerId}
+              currentUsername={currentUsername}
             />
           )}
 
-          {gameWinner && showWinnerDisplay && hasJoined && (() => {
-            // Always log winner display rendering
-            console.log('[Game Component] Rendering WinnerDisplay', {
-              gameWinner,
-              currentPlayerId,
-              currentUsername,
-              hasJoined,
-              showWinnerDisplay,
-              isCurrentPlayerWinner: gameWinner.id === currentPlayerId || gameWinner.username === currentUsername,
-              playerState: {
-                currentPlayer: players.find(p => p.id === currentPlayerId),
-                hasCurrentPlayer: Boolean(players.find(p => p.id === currentPlayerId))
-              }
-            });
-            return (
-              <WinnerDisplay 
-                winner={gameWinner}
-                isGameWinner={true}
-                currentPlayerId={currentPlayerId}
-                currentUsername={currentUsername}
-                onClose={closeWinnerDisplay}
-              />
-            );
-          })()}
+          {gameWinner && showWinnerDisplay && hasJoined && (
+            <WinnerDisplay 
+              winner={gameWinner}
+              isGameWinner={true}
+              currentPlayerId={currentPlayerId}
+              currentUsername={currentUsername}
+              onClose={closeWinnerDisplay}
+            />
+          )}
 
           {currentPlayerId && (
             <button 
