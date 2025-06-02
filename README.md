@@ -1,3 +1,6 @@
+# Name
+Semahegn Adugna
+
 # Multi-Round Points Game
 
 A real-time multiplayer game where players compete for points across multiple rounds. Built with NestJS (backend) and React (frontend).
