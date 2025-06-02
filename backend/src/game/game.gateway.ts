@@ -23,7 +23,7 @@ import * as WSMessages from './types/websocket-messages';
   namespace: 'game',
   pingInterval: 10000, // 10 seconds
   pingTimeout: 5000,   // 5 seconds
-  transports: ['websocket'],
+  transports: ['websocket', 'polling'],
   allowUpgrades: true
 })
 export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
@@ -265,8 +265,12 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       minPlayersToStart: GAME_CONSTANTS.MIN_PLAYERS_TO_START
     });
 
-    // Check if we can auto-start another game
-    this.checkAutoStart();
+    // Add a 10-second delay before checking for auto-start
+    this.logger.debug('Waiting 10 seconds before checking for auto-start');
+    setTimeout(() => {
+      this.logger.debug('Checking for auto-start after delay');
+      this.checkAutoStart();
+    }, 10000); // 10 seconds delay
   }
 
   private determineGameWinners(): Player[] {
@@ -363,5 +367,15 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       // Start the round flow
       setTimeout(() => this.handleRoundFlow(), GAME_CONSTANTS.COUNTDOWN_DURATION);
     }
+  }
+
+  @SubscribeMessage('test_event')
+  handleTestEvent(client: Socket, data: any): void {
+    this.logger.debug('Test event received:', { clientId: client.id, data });
+    client.emit('test_response', {
+      received: data,
+      serverTime: new Date().toISOString(),
+      clientId: client.id
+    });
   }
 }
