@@ -1,110 +1,107 @@
-import React, { useState } from 'react';
-import { useWebSocket } from '../hooks/useWebSocket';
+import React from 'react';
+import { AppLayout } from './layout/AppLayout';
+import { JoinGame } from './join/JoinGame';
+import { PlayerList } from './players/PlayerList';
+import { GameInfo } from './game/GameInfo';
+import { RoundInfo } from './game/RoundInfo';
+import { WinnerDisplay } from './game/WinnerDisplay';
+import { SpinningWheel } from './game/SpinningWheel';
+import { useGameConnection, useGameState, usePlayers, useGameActions } from '../context/GameContext';
 import './Game.css';
 
-export const Game: React.FC = () => {
-  const [username, setUsername] = useState('');
-  const {
-    connect,
-    disconnect,
-    joinGame,
-    startGame,
-    leaveGame,
-    isConnected,
-    players,
-    gameActive,
-    currentRound,
-    totalRounds,
-    error,
-    statusMessage,
-    currentPlayer
-  } = useWebSocket();
+const debugLog = (action: string, data?: any) => {
+  console.log(`[Game Component] ${action}`, data ?? '');
+};
 
-  const handleJoin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim()) {
-      return;
+export const Game: React.FC = () => {
+  const { isConnected, isConnecting, connectionError, socket, latency, reconnect } = useGameConnection();
+  const { gameActive, currentRound, totalRounds, statusMessage, roundWinner, gameWinner } = useGameState();
+  const { players, currentPlayerId } = usePlayers();
+  const { joinGame } = useGameActions();
+
+  debugLog('Rendering with state', { 
+    isConnected, 
+    currentPlayerId, 
+    gameActive, 
+    playerCount: players.length,
+    players,
+    gameWinner
+  });
+
+  const handleJoinSuccess = async (username: string) => {
+    try {
+      debugLog('Joining game', { username });
+      await joinGame(username);
+    } catch (err) {
+      debugLog('Join game error', err);
     }
-    console.log('Submitting join request with username:', username);
-    joinGame(username.trim());
   };
 
+  const showJoinForm = isConnected && !currentPlayerId && !gameActive;
+  const isSpinning = gameActive && players.some(p => p.isSpinning);
+
   return (
-    <div className="game-container">
-      <h2>Multi-Round Points Game</h2>
-      
-      <div className="connection-status">
-        Status: {statusMessage}
-        {!isConnected && (
-          <div style={{ color: 'red' }}>
-            Not connected to game server. Please wait...
+    <AppLayout>
+      <div className="game-container">
+        <GameInfo 
+          status={statusMessage}
+          error={connectionError}
+          socket={socket}
+          stats={{
+            latency,
+            messagesSent: 0,
+            messagesReceived: 0
+          }}
+        />
+
+        {isConnecting && (
+          <div className="connecting-toast">
+            Connecting to server...
           </div>
         )}
-      </div>
 
-      {error && (
-        <div className="error-message">
-          Error: {error}
-        </div>
-      )}
-
-      {isConnected && !currentPlayer && (
-        <form onSubmit={handleJoin} className="join-form">
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Enter username"
-            minLength={2}
-            required
+        {showJoinForm && (
+          <JoinGame 
+            socket={socket}
+            onJoinSuccess={handleJoinSuccess}
           />
-          <button type="submit">Join Game</button>
-        </form>
-      )}
-
-      {currentPlayer && (
-        <div className="game-controls">
-          <button onClick={startGame} disabled={gameActive}>
-            Start Game
-          </button>
-          <button onClick={leaveGame}>Leave Game</button>
-          <button onClick={disconnect}>Disconnect</button>
-        </div>
-      )}
-
-      <div className="game-state">
-        {gameActive && (
-          <div className="round-info">
-            <div className="round-number">Round {currentRound} of {totalRounds}</div>
-            <div className="round-progress">
-              <div 
-                className="progress-bar" 
-                style={{ width: `${(currentRound / totalRounds) * 100}%` }}
-              />
-            </div>
-          </div>
         )}
 
-        <div className="players-list">
-          <h3>Players ({players.length})</h3>
-          <div className="players-grid">
-            {players.map((player) => (
-              <div 
-                key={player.id} 
-                className={`player-card ${
-                  currentPlayer && player.id === currentPlayer.id ? 'current-player' : ''
-                } ${gameActive ? 'spinning' : ''}`}
-              >
-                <span className="player-name">
-                  {player.username}
-                  {currentPlayer && player.id === currentPlayer.id && ' (You)'}
-                </span>
-                <span className="player-score">Score: {player.score}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {isConnected && (
+          <>
+            {gameActive && (
+              <>
+                <RoundInfo
+                  currentRound={currentRound}
+                  totalRounds={totalRounds}
+                  isActive={gameActive}
+                  roundWinner={roundWinner}
+                />
+                <div className="game-wheel-container">
+                  <SpinningWheel 
+                    isSpinning={isSpinning}
+                    size="large"
+                    spokeCount={8}
+                  />
+                </div>
+              </>
+            )}
+
+            <PlayerList 
+              players={players}
+              currentPlayerId={currentPlayerId}
+              gameActive={gameActive}
+            />
+
+            {gameWinner && !gameActive && (
+              <WinnerDisplay
+                winner={gameWinner}
+                isCurrentPlayer={gameWinner.id === currentPlayerId}
+              />
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </AppLayout>
   );
 };
